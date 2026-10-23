@@ -102,7 +102,7 @@ def test_vm_allocations_must_be_positive(field: str, value: int):
     assert exc.value.errors()[0]["type"] == "greater_than"
 
 
-@pytest.mark.parametrize("kind", ["Network", "Provider", "Unknown", "stage", ""])
+@pytest.mark.parametrize("kind", ["Project", "Provider", "Unknown", "stage", ""])
 def test_unsupported_kinds_fail_at_discriminator(kind: str):
     with pytest.raises(ValidationError) as exc:
         parse_resource(document(kind))
@@ -139,7 +139,7 @@ def test_spec_must_be_a_mapping(kind: str, spec: object):
         ],
     ],
 )
-def test_vm_invalid_nested_specs_and_deferred_fields(spec: object):
+def test_vm_invalid_nested_specs_and_unknown_fields(spec: object):
     data = document("VirtualMachine")
     data["spec"] = spec
     with pytest.raises(ValidationError):

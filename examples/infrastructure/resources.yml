@@ -1,0 +1,68 @@
+# Portable declarations only; loading this stream does not execute infrastructure.
+api_version: iac/v0alpha1
+kind: Network
+metadata:
+  name: servers
+spec:
+  vlan_id: 10
+  ipv4:
+    cidr: 192.0.2.0/24
+    gateway: 192.0.2.1
+---
+api_version: iac/v0alpha1
+kind: Hypervisor
+metadata:
+  name: host01
+spec:
+  management:
+    address: 192.0.2.10
+lifecycle:
+  stage: platform
+  desired_state: present
+  phases:
+    observe: managed
+    provision: external
+    configure: external
+  prevent_destroy: true
+---
+api_version: iac/v0alpha1
+kind: Image
+metadata:
+  name: debian13
+spec:
+  os:
+    family: linux
+    distribution: debian
+    version: "13"
+    architecture: amd64
+---
+api_version: iac/v0alpha1
+kind: VirtualMachine
+metadata:
+  name: app01
+spec:
+  placement:
+    target: Hypervisor/host01
+  cpu:
+    cores: 4
+  memory:
+    mib: 4096
+  disks:
+    - name: root
+      size_gib: 32
+  interfaces:
+    - name: primary
+      network: Network/servers
+      ipv4:
+        mode: static
+        address: 192.0.2.20/24
+  image:
+    ref: Image/debian13
+lifecycle:
+  stage: workloads
+  desired_state: present
+  phases:
+    observe: managed
+    provision: managed
+    configure: managed
+  prevent_destroy: true
