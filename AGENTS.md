@@ -33,3 +33,15 @@ The Resource Model is public API; in-memory compiler representation can evolve i
 - Run tests and lint where dependencies are available; disclose any unrun checks.
 - Do not commit credentials, real infrastructure endpoints, `uv` caches, `.venv`, or state files.
 - Keep example YAML non-secret and vendor-neutral.
+
+## GitHub collaboration workflow (mandatory)
+
+1. Start from the current `main` on a dedicated branch named `feat/...`, `fix/...`, `test/...`, `docs/...`, or `chore/...`. Never commit or push directly to `main`.
+2. Commit focused changes with explanatory messages; open a Draft Pull Request targeting `main` as soon as there is a reviewable task scope.
+3. Keep one logical task per PR, ideally tied to a GitHub Issue; avoid combining unrelated milestone steps.
+4. Include a short summary, exact tests executed or not executed, and any Resource Model/API impact in every PR.
+5. Run `uv run ruff check .` and `uv run pytest` before asking for review; investigate failing CI checks rather than bypassing them.
+6. Do **not** self-merge or enable auto-merge. The human maintainer reviews and chooses when to merge. Prefer squash merge after approval.
+7. Do not silently change `iac/v0alpha1`, `iac-provider/v0alpha1`, or work beyond the requested milestone.
+
+See `docs/contributing-workflow.md` for details.
