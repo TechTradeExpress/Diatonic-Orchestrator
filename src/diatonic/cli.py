@@ -14,7 +14,7 @@ app = typer.Typer(
 console = Console()
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(
     version: bool = typer.Option(
         False,
