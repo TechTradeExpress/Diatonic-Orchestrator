@@ -1,0 +1,19 @@
+api_version: iac/v0alpha1
+kind: VirtualMachine
+metadata:
+  name: docker01
+  labels:
+    site: home
+spec:
+  cpu:
+    cores: 4
+  memory:
+    mib: 4096
+lifecycle:
+  stage: workloads
+  desired_state: present
+  phases:
+    observe: managed
+    provision: managed
+    configure: managed
+  prevent_destroy: true
