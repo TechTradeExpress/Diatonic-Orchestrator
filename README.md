@@ -23,7 +23,8 @@ constraints and deterministic topological analysis are implemented, together wit
 `diatonic graph`. Provider/ProviderBinding schemas and static binding-target
 validation are implemented. M2.7 adds library-only explicit phase/capability queries
 and inspection of supplied driver support metadata; neither CLI invokes them.
-Provider selection, environment compatibility and `diatonic explain` remain planned
+M2.8 adds deterministic library-only offline Provider selection for explicit managed
+phase requests. Environment compatibility and `diatonic explain` remain planned
 in the [Milestone 2 roadmap](docs/milestone-2.md). See
 [ADR-0012](docs/decisions/0012-stage-order-analysis.md) for the internal Stage
 policy. Provider execution, protocols and destructive operations remain outside M2.
@@ -205,12 +206,12 @@ Save the example to a file and pass it to `diatonic validate` or `diatonic graph
 These commands validate the declaration without importing, discovering,
 initializing or executing a driver, checking credentials, or contacting an
 endpoint. Success does not prove that a driver exists or that its opaque config
-is usable. Capability compatibility, provider selection and execution
+is usable. CLI provider selection, environment compatibility and execution
 remain deferred. Use secret references, never actual credentials, in configuration.
 
 ## Declare ProviderBindings
 
-A binding names a Provider for a capability and a future exact selector. This
+A binding names a Provider for a capability and an exact selector. This
 safe two-document example needs no installed driver or matching VM:
 
 ```yaml
@@ -239,15 +240,15 @@ Save it as `bindings.yml` and run `uv run diatonic validate bindings.yml` or
 selector. Capability and kind identifiers are case-sensitive opaque tokens,
 without an allowlist. Label keys and values are strict strings; the initial
 literal grammar rejects expression objects, unknown keys, and glob/operator
-characters `*?[]!=<>|&` in selector strings. The intended later matching policy is
-exact kind equality and equality for every listed label; missing labels would not
-match. Selectors are **not evaluated** by this increment.
+characters `*?[]!=<>|&` in selector strings. Library-only M2.8 resolution uses
+exact kind equality and equality for every listed label; missing labels do not
+match. Selectors are **not evaluated** by either CLI command.
 
 Priority is an explicit strict signed integer, including zero and negatives.
-Highest numeric priority winning is a proposed future policy, not implemented
-selection behavior. Multiple bindings, including equal priorities for one Provider,
-are valid declarations. No ambiguity decision or capability/driver support check
-occurs yet. See [ADR-0014](docs/decisions/0014-provider-binding-declarations.md)
+Library-only M2.8 resolution uses highest numeric priority among declared-supported
+candidates. Multiple bindings, including equal priorities for one Provider,
+remain valid declarations. Neither CLI performs an ambiguity decision or
+capability/driver support check. See [ADR-0014](docs/decisions/0014-provider-binding-declarations.md)
 for the schema choices and M2.8 review gates.
 
 Both CLI commands check that the exact `Provider/name` exists as a typed Provider.
@@ -281,7 +282,27 @@ discover/import drivers or execute anything. `diatonic validate` and `diatonic g
 retain their existing checks and output and do not analyze managed phases
 implicitly. See [ADR-0015](docs/decisions/0015-offline-capability-phase-analysis.md)
 for the seven documented mappings, unsupported cases, API examples and diagnostics.
-Provider selection and an explicit explain interface remain M2.8/M2.9 work.
+
+## Offline Provider resolution (library only)
+
+`diatonic.compiler.provider_resolution.resolve_phase_provider(index, analysis,
+bindings, metadata)` consumes an explicit M2.7 phase analysis and M2.6 validated
+binding declarations. Managed demand matches exact capability, kind and all labels,
+then selects the unique highest-priority binding with declared driver support.
+Tied top bindings are ambiguous even when they target the same Provider.
+
+Unknown driver metadata blocks selection when its candidate could tie or outrank
+the best supported candidate. Lower-priority unknown candidates remain visible
+without blocking a unique winner. Results and errors include immutable candidate
+traces and separate document-root provenance; Provider configuration is neither
+inspected nor retained. External, disabled and unspecified requests return without
+managed selection or a requirement for bindings/metadata.
+
+This is declaration-based offline selection, not environment compatibility or
+execution readiness. Neither CLI invokes it automatically. See
+[ADR-0016](docs/decisions/0016-offline-provider-resolution.md) for examples, diagnostic
+precedence and input-consistency boundaries. An explicit `diatonic explain`
+interface remains M2.9 work.
 
 ## Project documents
 
