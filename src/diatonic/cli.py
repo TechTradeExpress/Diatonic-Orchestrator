@@ -16,6 +16,7 @@ from diatonic.compiler.references import (
     SourceLocation,
     resolve_resources,
 )
+from diatonic.compiler.semantics import SemanticValidationError, validate_ipv4_semantics
 
 app = typer.Typer(
     name="diatonic",
@@ -60,7 +61,10 @@ def _field_text(path: FieldPath) -> str:
 
 
 def _error_text(
-    error: YamlLoadError | ResourceResolutionError | NormalizationError,
+    error: YamlLoadError
+    | ResourceResolutionError
+    | NormalizationError
+    | SemanticValidationError,
 ) -> str:
     if isinstance(error, YamlLoadError):
         # YAML parser errors may carry precise problem marks; keep them as supplied.
@@ -71,6 +75,26 @@ def _error_text(
             f"{error.indexed_identity!r} differs from resource "
             f"{error.resource_identity!r}"
         )
+    if isinstance(error, SemanticValidationError):
+        semantic = error.diagnostic
+        details = [
+            f"{_source_text(semantic.source)}: {semantic.code}",
+            f"resource={semantic.resource_identity}",
+            f"field={_field_text(semantic.field_path)}",
+            f"network={semantic.network_identity}",
+            f"cidr={semantic.cidr}",
+            f"address={semantic.address}",
+            semantic.message,
+        ]
+        if semantic.related is not None:
+            related = semantic.related
+            details.append(
+                f"conflicting declaration: {_source_text(related.source)}; "
+                f"resource={related.resource_identity}; "
+                f"field={_field_text(related.field_path)}; "
+                f"address={related.address}"
+            )
+        return "; ".join(details)
     diagnostic = error.diagnostic
     details = [f"{_source_text(diagnostic.source)}: {diagnostic.code}"]
     if diagnostic.resource_identity is not None:
@@ -96,15 +120,21 @@ def validate(
         ),
     ],
 ) -> None:
-    """Check YAML syntax, resource schemas, identities and declared references.
+    """Check YAML syntax, schemas, identities, references and declared IPv4 semantics.
 
     No directory discovery, cycle checks, provider validation or execution.
     """
     try:
         documents = load_yaml_files(files)
         index = resolve_resources(documents)
+        validate_ipv4_semantics(index)
         ir = normalize_resources(index)
-    except (YamlLoadError, ResourceResolutionError, NormalizationError) as error:
+    except (
+        YamlLoadError,
+        ResourceResolutionError,
+        NormalizationError,
+        SemanticValidationError,
+    ) as error:
         Console(stderr=True).print(Text(_error_text(error)), soft_wrap=True)
         raise typer.Exit(code=1) from None
     resources, references = len(ir.resources), len(ir.references)

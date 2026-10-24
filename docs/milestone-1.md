@@ -30,6 +30,14 @@ The numbered items are implementation increments, not a requirement to implement
 - Exposes a working `diatonic validate` command.
 - Tests cover valid samples and failure cases.
 
+## Audit-driven follow-up
+
+M1.8 adds a separate IPv4 semantic validation step after reference resolution and
+before normalized IR: gateway/subnet membership, static VM host membership,
+duplicate static hosts within one logical Network and gateway conflicts. This
+closes a specific declared-data validation gap from Resource Model §23; broader
+lifecycle and topology semantics remain separate work. See decision 0008.
+
 ## Deferred to milestone 2+
 
 Do not build DAG ordering, graph/explain commands, Provider/ProviderBinding resolution, protocol, mock providers, journal, or real adapters. No `plan` or `apply` commands in M1.
