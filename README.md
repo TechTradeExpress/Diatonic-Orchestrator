@@ -18,6 +18,14 @@ Validation covers the implemented declaration checks below. Broader semantic
 conditions in the design document remain future work; this does not assert that
 every Milestone 1 semantic acceptance criterion has been completed.
 
+The planned M1 increments and the IPv4 follow-up are delivered. Next is the
+proposed [Milestone 2 roadmap](docs/milestone-2.md): dependency/Stage analysis,
+offline capability/provider resolution and provider-free graph/explain views.
+These M2 features are not implemented yet; see
+[ADR-0009](docs/decisions/0009-m2-dependency-lifecycle-boundaries.md) for design
+choices awaiting review. Provider execution, protocols and destructive operations
+remain outside M2.
+
 ## Setup
 
 Python 3.12+ and [`uv`](https://docs.astral.sh/uv/) are required.

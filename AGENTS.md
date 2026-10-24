@@ -5,7 +5,7 @@ You are working on **Diatonic Orchestrator**, a public MIT open-source IaC proje
 ## Read first
 
 1. Read `docs/resource-model/v0alpha1.md` entirely; it is the source of truth for architecture and semantics.
-2. Read `docs/decisions/0001-project-naming.md` and `docs/milestone-1.md`.
+2. Read `docs/decisions/0001-project-naming.md`, `docs/milestone-1.md`, and `docs/milestone-2.md`; for M2 work also read ADR-0009.
 3. Inspect existing tests and implementation before changing anything.
 
 ## Invariants
@@ -19,11 +19,11 @@ You are working on **Diatonic Orchestrator**, a public MIT open-source IaC proje
 - Core must have no special-case `if proxmox`, `if terraform`, or `if ansible` branches.
 - Atmos is the benchmark: do not recreate its generic YAML workflow/component features without compelling differentiation.
 
-## Scope: first milestone only
+## Scope: M1 maintenance and incremental M2 work
 
-Implement strict YAML loading, resource models, API version validation, identity index, references, semantic validation, and normalized IR. Keep the CLI thin. Implement features in small, reviewable commits with focused tests. Use `docs/milestone-1.md` for ordering.
+Preserve the implemented M1 resource compiler, IPv4 checks, immutable IR and thin validate CLI. Use `docs/milestone-1.md` for that baseline and `docs/milestone-2.md` for proposed dependency/Stage analysis and offline provider resolution. Work only on the explicitly requested increment; M2.0 is documentation only, and subsequent implementation requires review of its applicable architecture choices.
 
-**Do not** implement provider execution, real Terraform/Ansible/RouterOS/Proxmox integrations, plugin protocol, DAG scheduling, state engine, secret manager, general templating, or a GUI during Milestone 1. `Provider`/`ProviderBinding`, capabilities and resolution belong to Milestone 2 per the accepted milestone split.
+M2 may add logical graphs/topological analysis, `Provider`/`ProviderBinding` schemas, capabilities, offline resolution and provider-free graph/explain views only in separately scoped tasks. **Do not** implement runtime scheduling, provider execution (including mock execution), provider protocol, real Terraform/Ansible/RouterOS/Proxmox integrations, state/journal handling, secret management, plan/apply, general templating or a GUI in M2. Preserve unspecified lifecycle values; do not infer destructive operations from desired state alone.
 
 The Resource Model is public API; in-memory compiler representation can evolve independently. Changes to contract semantics require a documented rationale and tests. Where the design document leaves a decision open, select the narrowest safe behavior and document it rather than silently expanding scope.
 

@@ -11,9 +11,16 @@ Diatonic Orchestrator is developed through focused branches, tests and Pull Requ
 5. The agent must **not** self-merge or enable auto-merge. The maintainer reviews changes and, if accepted, squash-merges them.
 6. Never push changes directly to `main` or force-push `main`. Do not introduce out-of-scope provider execution or vendor-specific behavior in the core.
 
+M1 compiler behavior remains the baseline. M2 work follows the proposed
+`docs/milestone-2.md` and ADR-0009 in separately requested PR-sized increments,
+after review of the applicable architecture decisions. M2.0 is documentation only.
+M2 analysis must remain offline: no provider/mock execution, provider protocol,
+runtime scheduling, state/journal engine, or plan/apply. Preserve unspecified
+lifecycle ownership and the existing Resource Model/API contracts.
+
 ## Agent kickoff
 
-Read `AGENTS.md`, `docs/resource-model/v0alpha1.md`, `docs/decisions/0001-project-naming.md`, and `docs/milestone-1.md` before editing. The resource model takes precedence over implementation guidance. Begin with the smallest unit of work that can be independently reviewed, with focused tests. Discuss ambiguities in a PR rather than assuming a change to the public contract.
+Read `AGENTS.md`, `docs/resource-model/v0alpha1.md`, `docs/decisions/0001-project-naming.md`, and `docs/milestone-1.md` before editing; for M2 also read `docs/milestone-2.md` and ADR-0009. The resource model takes precedence over implementation guidance. Begin with the smallest unit of work that can be independently reviewed, with focused tests. Discuss ambiguities in a PR rather than assuming a change to the public contract.
 
 ## GitHub ruleset (maintainer action)
 
