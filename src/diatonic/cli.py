@@ -22,6 +22,10 @@ from diatonic.compiler.graph import (
 )
 from diatonic.compiler.loader import YamlLoadError, load_yaml_files
 from diatonic.compiler.normalize import NormalizationError, normalize_resources
+from diatonic.compiler.provider_bindings import (
+    ProviderBindingValidationError,
+    validate_provider_bindings,
+)
 from diatonic.compiler.references import (
     FieldPath,
     ResourceResolutionError,
@@ -82,8 +86,11 @@ def _error_text(
     error: YamlLoadError
     | ResourceResolutionError
     | NormalizationError
-    | SemanticValidationError,
+    | SemanticValidationError
+    | ProviderBindingValidationError,
 ) -> str:
+    if isinstance(error, ProviderBindingValidationError):
+        return str(error)
     if isinstance(error, YamlLoadError):
         # YAML parser errors may carry precise problem marks; keep them as supplied.
         return str(error)
@@ -140,18 +147,20 @@ def validate(
 ) -> None:
     """Check YAML syntax, schemas, identities, references and declared IPv4 semantics.
 
-    No directory discovery, cycle checks, provider validation or execution.
+    No directory discovery, cycle checks, driver validation or execution.
     """
     try:
         documents = load_yaml_files(files)
         index = resolve_resources(documents)
         validate_ipv4_semantics(index)
+        validate_provider_bindings(index)
         ir = normalize_resources(index)
     except (
         YamlLoadError,
         ResourceResolutionError,
         NormalizationError,
         SemanticValidationError,
+        ProviderBindingValidationError,
     ) as error:
         Console(stderr=True).print(Text(_error_text(error)), soft_wrap=True)
         raise typer.Exit(code=1) from None
@@ -264,6 +273,7 @@ def graph(
         documents = load_yaml_files(files)
         index = resolve_resources(documents)
         validate_ipv4_semantics(index)
+        validate_provider_bindings(index)
         normalize_resources(index)
         facts = classify_dependencies(index)
         dependency_graph = build_dependency_graph(index, facts)
@@ -273,6 +283,7 @@ def graph(
         ResourceResolutionError,
         NormalizationError,
         SemanticValidationError,
+        ProviderBindingValidationError,
     ) as error:
         Console(stderr=True).print(Text(_error_text(error)), soft_wrap=True)
         raise typer.Exit(code=1) from None

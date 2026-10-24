@@ -12,7 +12,7 @@ The Milestone 1 compiler pipeline and `diatonic validate` CLI are implemented:
 strict YAML loading, typed resource schemas, canonical identities, declared
 reference resolution, network-scoped IPv4 semantic checks and immutable normalized
 IR. The M1 resource kinds are `Stage`, `Network`, `Hypervisor`, `Image` and
-`VirtualMachine`; M2 also supports portable `Provider` instance declarations.
+`VirtualMachine`; M2 also supports portable `Provider` and `ProviderBinding` declarations.
 
 Validation covers the implemented declaration checks below. Broader semantic
 conditions in the design document remain future work; this does not assert that
@@ -20,9 +20,9 @@ every Milestone 1 semantic acceptance criterion has been completed.
 
 M2 dependency classification, immutable cycle-checked graphs, offline Stage
 constraints and deterministic topological analysis are implemented, together with
-`diatonic graph`. Provider instance schemas are implemented; ProviderBinding,
-offline capability/provider resolution and `diatonic explain`
-remain planned in the [Milestone 2 roadmap](docs/milestone-2.md). See
+`diatonic graph`. Provider/ProviderBinding schemas and static binding-target
+validation are implemented. Capability compatibility, provider selection and
+`diatonic explain` remain planned in the [Milestone 2 roadmap](docs/milestone-2.md). See
 [ADR-0012](docs/decisions/0012-stage-order-analysis.md) for the internal Stage
 policy. Provider execution, protocols and destructive operations remain outside M2.
 
@@ -66,6 +66,9 @@ It checks:
   Network, and VM addresses conflicting with that Network's gateway. Interface
   prefix lengths need not match the Network prefix. Optional IPv4 blocks remain
   optional; no addresses are synthesized.
+- Exact `ProviderBinding.spec.provider` target existence and typed Provider
+  identity, in a separate static pass. No selector evaluation, capability support
+  check or provider selection occurs.
 - Conversion of the resolved index to the existing immutable normalized IR.
 
 Success prints resource and resolved declared-reference counts to stdout and exits
@@ -145,7 +148,7 @@ vertices unless explicitly assigned themselves. The topological order chooses th
 smallest case-sensitive currently eligible identity, respecting dependencies and
 Stage groups; unassigned vertices may appear before, between or after groups.
 
-`graph` performs the same M1 declaration checks as `validate`, then additionally
+`graph` performs the same declaration checks as `validate`, then additionally
 rejects dependency cycles and direct or indirect backwards Stage paths (including
 unassigned intermediates). `validate` retains its declaration-only behavior and
 continues to accept otherwise valid cyclic or Stage-conflicting declarations.
@@ -200,8 +203,60 @@ Save the example to a file and pass it to `diatonic validate` or `diatonic graph
 These commands validate the declaration without importing, discovering,
 initializing or executing a driver, checking credentials, or contacting an
 endpoint. Success does not prove that a driver exists or that its opaque config
-is usable. `ProviderBinding`, capabilities, provider selection and execution
+is usable. Capability compatibility, provider selection and execution
 remain deferred. Use secret references, never actual credentials, in configuration.
+
+## Declare ProviderBindings
+
+A binding names a Provider for a capability and a future exact selector. This
+safe two-document example needs no installed driver or matching VM:
+
+```yaml
+api_version: iac/v0alpha1
+kind: Provider
+metadata: {name: primary}
+spec:
+  driver: example.driver
+  config: {}
+---
+api_version: iac/v0alpha1
+kind: ProviderBinding
+metadata: {name: lab-vm-provision}
+spec:
+  capability: virtual_machine.provision
+  match:
+    kind: VirtualMachine
+    labels: {site: lab}
+  provider: Provider/primary
+  priority: 100
+```
+
+Save it as `bindings.yml` and run `uv run diatonic validate bindings.yml` or
+`uv run diatonic graph bindings.yml`. All four spec fields are required;
+`match.kind` is required and `match.labels` may be omitted for a kind-only
+selector. Capability and kind identifiers are case-sensitive opaque tokens,
+without an allowlist. Label keys and values are strict strings; the initial
+literal grammar rejects expression objects, unknown keys, and glob/operator
+characters `*?[]!=<>|&` in selector strings. The intended later matching policy is
+exact kind equality and equality for every listed label; missing labels would not
+match. Selectors are **not evaluated** by this increment.
+
+Priority is an explicit strict signed integer, including zero and negatives.
+Highest numeric priority winning is a proposed future policy, not implemented
+selection behavior. Multiple bindings, including equal priorities for one Provider,
+are valid declarations. No ambiguity decision or capability/driver support check
+occurs yet. See [ADR-0014](docs/decisions/0014-provider-binding-declarations.md)
+for the schema choices and M2.8 review gates.
+
+Both CLI commands check that the exact `Provider/name` exists as a typed Provider.
+A missing target reports `missing_binding_provider` with binding/target identities,
+`spec.provider`, and document-root provenance, exits `1`, and prints no success
+output. No same-name or same-driver fallback occurs. This configuration link is
+separate from M1.5 references: the example validates two resources with **zero**
+counted declared references and creates **zero** dependency edges. Both resources
+remain logical vertices. Ordinary explicit `depends_on` still creates edges, and
+optional `lifecycle.stage` remains a separate Stage assignment. Existing inputs
+without bindings keep their prior CLI behavior and output.
 
 ## Project documents
 

@@ -6,9 +6,14 @@ from diatonic.model.image import Image, ImageSpec, OperatingSystemSpec
 from diatonic.model.lifecycle import Lifecycle, Phases
 from diatonic.model.network import Network, NetworkIPv4Spec, NetworkSpec
 from diatonic.model.provider import Provider, ProviderSpec
+from diatonic.model.provider_binding import (
+    ProviderBinding,
+    ProviderBindingMatch,
+    ProviderBindingSpec,
+)
 from diatonic.model.resource import Resource, parse_resource
 from diatonic.model.stage import Stage, StageSpec
-from diatonic.model.types import ResourceName, ResourceReference
+from diatonic.model.types import ProviderReference, ResourceName, ResourceReference
 from diatonic.model.virtual_machine import (
     CpuSpec,
     DiskSpec,
@@ -42,6 +47,10 @@ __all__ = [
     "Phases",
     "PlacementSpec",
     "Provider",
+    "ProviderBinding",
+    "ProviderBindingMatch",
+    "ProviderBindingSpec",
+    "ProviderReference",
     "ProviderSpec",
     "Resource",
     "ResourceBase",

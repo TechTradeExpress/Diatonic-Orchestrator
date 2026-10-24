@@ -41,3 +41,7 @@ NetworkReference = Annotated[
     ResourceReference, AfterValidator(_expected_kind("Network"))
 ]
 ImageReference = Annotated[ResourceReference, AfterValidator(_expected_kind("Image"))]
+
+ProviderReference = Annotated[
+    ResourceReference, AfterValidator(_expected_kind("Provider"))
+]
