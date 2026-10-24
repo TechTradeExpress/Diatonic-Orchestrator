@@ -1,0 +1,28 @@
+api_version: iac/v0alpha1
+kind: VirtualMachine
+metadata:
+  name: app
+  labels: {site: lab}
+spec:
+  cpu: {cores: 1}
+  memory: {mib: 512}
+lifecycle:
+  phases: {provision: managed}
+---
+api_version: iac/v0alpha1
+kind: Provider
+metadata: {name: primary}
+spec:
+  driver: example.driver
+  config: {}
+---
+api_version: iac/v0alpha1
+kind: ProviderBinding
+metadata: {name: lab-vm-provision}
+spec:
+  capability: virtual_machine.provision
+  match:
+    kind: VirtualMachine
+    labels: {site: lab}
+  provider: Provider/primary
+  priority: 100

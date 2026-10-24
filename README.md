@@ -22,10 +22,12 @@ M2 dependency classification, immutable cycle-checked graphs, offline Stage
 constraints and deterministic topological analysis are implemented, together with
 `diatonic graph`. Provider/ProviderBinding schemas and static binding-target
 validation are implemented. M2.7 adds library-only explicit phase/capability queries
-and inspection of supplied driver support metadata; neither CLI invokes them.
+and inspection of supplied driver support metadata; `validate` and `graph` do not
+invoke them.
 M2.8 adds deterministic library-only offline Provider selection for explicit managed
-phase requests. Environment compatibility and `diatonic explain` remain planned
-in the [Milestone 2 roadmap](docs/milestone-2.md). See
+phase requests. M2.9 exposes provider-free `diatonic explain` and optional explicit
+phase selection; the planned M2 increments are implemented. Environment compatibility
+and execution remain later work. See the [Milestone 2 roadmap](docs/milestone-2.md) and
 [ADR-0012](docs/decisions/0012-stage-order-analysis.md) for the internal Stage
 policy. Provider execution, protocols and destructive operations remain outside M2.
 
@@ -169,7 +171,7 @@ Empty YAML files remain invalid; missing file arguments remain usage errors.
 This is a read-only, provider-free offline view. It does not initialize providers,
 execute infrastructure operations, generate graph/IR files, manage state or
 journals, perform planning or deployment, or produce an execution/deletion plan.
-There are no JSON, DOT or Mermaid exporters, `plan`, `apply` or `explain` commands.
+There are no JSON, DOT or Mermaid exporters, `plan` or `apply` commands.
 
 ## Declare Provider instances
 
@@ -206,8 +208,8 @@ Save the example to a file and pass it to `diatonic validate` or `diatonic graph
 These commands validate the declaration without importing, discovering,
 initializing or executing a driver, checking credentials, or contacting an
 endpoint. Success does not prove that a driver exists or that its opaque config
-is usable. CLI provider selection, environment compatibility and execution
-remain deferred. Use secret references, never actual credentials, in configuration.
+is usable. These declaration checks do not select Providers. Environment
+compatibility and execution remain deferred. Use secret references, never actual credentials, in configuration.
 
 ## Declare ProviderBindings
 
@@ -242,13 +244,13 @@ without an allowlist. Label keys and values are strict strings; the initial
 literal grammar rejects expression objects, unknown keys, and glob/operator
 characters `*?[]!=<>|&` in selector strings. Library-only M2.8 resolution uses
 exact kind equality and equality for every listed label; missing labels do not
-match. Selectors are **not evaluated** by either CLI command.
+match. Selectors are **not evaluated** by `validate` or `graph`.
 
 Priority is an explicit strict signed integer, including zero and negatives.
 Library-only M2.8 resolution uses highest numeric priority among declared-supported
 candidates. Multiple bindings, including equal priorities for one Provider,
-remain valid declarations. Neither CLI performs an ambiguity decision or
-capability/driver support check. See [ADR-0014](docs/decisions/0014-provider-binding-declarations.md)
+remain valid declarations. Neither `validate` nor `graph` performs an ambiguity
+decision or capability/driver support check. See [ADR-0014](docs/decisions/0014-provider-binding-declarations.md)
 for the schema choices and M2.8 review gates.
 
 Both CLI commands check that the exact `Provider/name` exists as a typed Provider.
@@ -299,10 +301,95 @@ inspected nor retained. External, disabled and unspecified requests return witho
 managed selection or a requirement for bindings/metadata.
 
 This is declaration-based offline selection, not environment compatibility or
-execution readiness. Neither CLI invokes it automatically. See
+execution readiness. `validate` and `graph` do not invoke it. See
 [ADR-0016](docs/decisions/0016-offline-provider-resolution.md) for examples, diagnostic
-precedence and input-consistency boundaries. An explicit `diatonic explain`
-interface remains M2.9 work.
+precedence and input-consistency boundaries. `diatonic explain` exposes these
+queries only when explicitly requested with `--phase`.
+
+## Explain one logical resource
+
+```sh
+uv run diatonic explain VirtualMachine/app01 examples/infrastructure/resources.yml tests/fixtures/reference-stages.yml
+```
+
+`diatonic explain RESOURCE FILE [FILE ...] [--phase PHASE] [--support-metadata FILE]`
+accepts an exact case-sensitive `Kind/name` and explicit YAML files. Baseline output
+works without Providers or bindings and shows direct prerequisites/dependents with
+all original reasons, Stage assignment (or unassigned), the resource's position in
+the existing offline logical topological order, and declared lifecycle fields.
+Arrows mean prerequisite → dependent; these sections do not infer transitive links.
+The whole supplied graph is checked for cycles and Stage conflicts before output.
+
+For the infrastructure VM, the output includes:
+
+```text
+Resource: VirtualMachine/app01
+Direct prerequisites (3):
+  Hypervisor/host01 -> VirtualMachine/app01
+    implicit: owner=VirtualMachine/app01 field=spec.placement.target
+  ...
+Stage and logical order:
+  Stage: Stage/workloads (order=40)
+  Logical topological position: 6 of 6
+...
+Provider resolution: not requested
+```
+
+Lifecycle fields show `(omitted)` versus explicit `null`, with parent lifecycle and
+phases presence shown separately. Ownership never defaults to managed. Desired
+state `absent` and `prevent_destroy: false` remain declarations, without implying
+an operation or authorization. Managed declarations alone do not request providers.
+
+To explicitly inspect one managed phase, use the safe repository example:
+
+```sh
+uv run diatonic explain VirtualMachine/app examples/offline-resolution/resources.yml --phase provision --support-metadata examples/offline-resolution/driver-support.json
+```
+
+This selects `ProviderBinding/lab-vm-provision` → `Provider/primary`, driver
+`example.driver`, priority 100, using supplied declared support. It shows every
+binding decision/reason. No installed driver or infrastructure is needed. Supported
+phases are `observe`, `provision`, `configure`; external, disabled and unspecified
+requests report no managed demand and do not read a supplied support file.
+
+The optional **CLI-only, unversioned** local UTF-8 JSON format is exactly:
+
+```json
+{
+  "drivers": [
+    {
+      "driver_id": "example.driver",
+      "capabilities": ["virtual_machine.provision"]
+    }
+  ]
+}
+```
+
+Both keys in each driver entry and the top-level `drivers` array are required.
+Unknown keys, duplicate JSON keys, duplicate drivers/capabilities, wrong types,
+non-finite numbers and invalid identifiers fail. `{"drivers": []}` is valid;
+empty capability arrays explicitly declare no support. Missing descriptors stay
+unknown. Nothing is discovered from the environment or Provider configuration.
+This file is not a provider protocol or executable manifest.
+
+For managed requests, no match, unsupported capability, decisive unknown metadata
+or a highest-priority tie fails with the existing diagnostic and full candidate
+trace on stderr. Ties remain ambiguous even for the same Provider. Supplying the
+example without `--support-metadata` produces `missing_driver_support_metadata`;
+it does not declare the driver unsupported or select a fallback. Support files are
+meaningful only with `--phase`; supplying one without a phase is a usage error.
+
+Success is deterministic plain text on stdout (exit 0); expected errors use only
+stderr (exit 1), and usage errors exit 2. No partial explanation is printed. Success
+omits filenames; error origins are document-root positions, not exact field
+coordinates. Names and paths render literally, independently of terminal width.
+Provider configuration, extensions and secret references are not dumped.
+
+`validate` and `graph` retain their previous pipelines and output; neither requests
+provider selection. `explain` performs offline declaration analysis only: no
+execution readiness guarantee, driver initialization, network access, state writes,
+operation planning, scheduling or deployment. See
+[ADR-0017](docs/decisions/0017-explain-cli.md) for the complete CLI contract.
 
 ## Project documents
 

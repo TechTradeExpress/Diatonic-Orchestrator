@@ -1,13 +1,28 @@
 """Thin CLI for resource compilation and declaration validation."""
 
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
 import typer
+from pydantic import TypeAdapter, ValidationError
 from rich.console import Console
 from rich.text import Text
 
 from diatonic import __version__
+from diatonic.cli_explain import (
+    explanation_text,
+    resolution_error_text,
+)
+from diatonic.cli_explain import (
+    field_text as _field_text,
+)
+from diatonic.cli_support import SupportMetadataError, load_support_metadata
+from diatonic.compiler.capabilities import (
+    PhaseAnalysisError,
+    PhaseRequest,
+    analyze_phase_request,
+)
 from diatonic.compiler.dependencies import (
     DependencyClassificationError,
     DependencySource,
@@ -26,8 +41,11 @@ from diatonic.compiler.provider_bindings import (
     ProviderBindingValidationError,
     validate_provider_bindings,
 )
+from diatonic.compiler.provider_resolution import (
+    ProviderResolutionError,
+    resolve_phase_provider,
+)
 from diatonic.compiler.references import (
-    FieldPath,
     ResourceResolutionError,
     SourceLocation,
     resolve_resources,
@@ -39,6 +57,7 @@ from diatonic.compiler.stages import (
     StageOrderInputError,
     analyze_stage_order,
 )
+from diatonic.model.types import ResourceReference
 
 app = typer.Typer(
     name="diatonic",
@@ -70,16 +89,6 @@ def _source_text(source: SourceLocation | DependencySource) -> str:
     if source.column is not None:
         location += f", column {source.column}"
     return location + ")"
-
-
-def _field_text(path: FieldPath) -> str:
-    result = ""
-    for segment in path:
-        if isinstance(segment, int):
-            result += f"[{segment}]"
-        else:
-            result += ("." if result else "") + segment
-    return result
 
 
 def _error_text(
@@ -297,3 +306,106 @@ def graph(
         Console(stderr=True).print(Text(_graph_error_text(error)), soft_wrap=True)
         raise typer.Exit(code=1) from None
     Console().print(Text(_graph_text(dependency_graph, analysis)), soft_wrap=True)
+
+
+class ExplainPhase(StrEnum):
+    observe = "observe"
+    provision = "provision"
+    configure = "configure"
+
+
+@app.command()
+def explain(
+    resource: Annotated[
+        str, typer.Argument(help="Exact canonical Kind/name.", metavar="RESOURCE")
+    ],
+    files: Annotated[
+        list[Path],
+        typer.Argument(
+            help="Explicit YAML files, in supplied order.", metavar="FILE [FILE ...]"
+        ),
+    ],
+    phase: Annotated[
+        ExplainPhase | None,
+        typer.Option(help="Explicit offline lifecycle phase query."),
+    ] = None,
+    support_metadata: Annotated[
+        Path | None, typer.Option(help="Local offline support JSON; requires --phase.")
+    ] = None,
+) -> None:
+    """Explain direct dependencies, Stage and lifecycle; optionally resolve one phase.
+
+    Offline declarations only. No execution, planning, state or driver discovery.
+    """
+    if support_metadata is not None and phase is None:
+        raise typer.BadParameter("requires --phase", param_hint="--support-metadata")
+    try:
+        identity = TypeAdapter(ResourceReference).validate_python(resource, strict=True)
+    except ValidationError:
+        raise typer.BadParameter(
+            "must use canonical Kind/name syntax", param_hint="RESOURCE"
+        ) from None
+    try:
+        documents = load_yaml_files(files)
+        index = resolve_resources(documents)
+        validate_ipv4_semantics(index)
+        bindings = validate_provider_bindings(index)
+        normalize_resources(index)
+        facts = classify_dependencies(index)
+        dependency_graph = build_dependency_graph(index, facts)
+        stages = analyze_stage_order(index, dependency_graph)
+        if identity not in index.resources:
+            Console(stderr=True).print(
+                Text(
+                    f"unknown_explain_resource: resource={identity}; "
+                    "declare the exact case-sensitive identity in the supplied files"
+                ),
+                soft_wrap=True,
+            )
+            raise typer.Exit(code=1)
+        analysis = None
+        resolution = None
+        if phase is not None:
+            analysis = analyze_phase_request(index, PhaseRequest(identity, phase.value))
+            metadata = (
+                load_support_metadata(support_metadata)
+                if analysis.fact.ownership == "managed" and support_metadata is not None
+                else None
+            )
+            resolution = resolve_phase_provider(index, analysis, bindings, metadata)
+    except (
+        YamlLoadError,
+        ResourceResolutionError,
+        NormalizationError,
+        SemanticValidationError,
+        ProviderBindingValidationError,
+    ) as error:
+        Console(stderr=True).print(Text(_error_text(error)), soft_wrap=True)
+        raise typer.Exit(code=1) from None
+    except (
+        DependencyClassificationError,
+        DependencyGraphInputError,
+        DependencyCycleError,
+        StageOrderInputError,
+        StageOrderConflictError,
+    ) as error:
+        Console(stderr=True).print(Text(_graph_error_text(error)), soft_wrap=True)
+        raise typer.Exit(code=1) from None
+    except (PhaseAnalysisError, SupportMetadataError) as error:
+        Console(stderr=True).print(Text(str(error)), soft_wrap=True)
+        raise typer.Exit(code=1) from None
+    except ProviderResolutionError as error:
+        Console(stderr=True).print(Text(resolution_error_text(error)), soft_wrap=True)
+        raise typer.Exit(code=1) from None
+    Console().print(
+        Text(
+            explanation_text(
+                index.resources[identity].resource,
+                dependency_graph,
+                stages,
+                analysis,
+                resolution,
+            )
+        ),
+        soft_wrap=True,
+    )
