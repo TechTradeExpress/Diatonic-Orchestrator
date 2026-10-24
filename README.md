@@ -18,13 +18,12 @@ Validation covers the implemented declaration checks below. Broader semantic
 conditions in the design document remain future work; this does not assert that
 every Milestone 1 semantic acceptance criterion has been completed.
 
-The planned M1 increments and the IPv4 follow-up are delivered. Next is the
-proposed [Milestone 2 roadmap](docs/milestone-2.md): dependency/Stage analysis,
-offline capability/provider resolution and provider-free graph/explain views.
-These M2 features are not implemented yet; see
-[ADR-0009](docs/decisions/0009-m2-dependency-lifecycle-boundaries.md) for design
-choices awaiting review. Provider execution, protocols and destructive operations
-remain outside M2.
+M2 dependency classification, immutable cycle-checked graphs, offline Stage
+constraints and deterministic topological analysis are implemented, together with
+`diatonic graph`. Offline capability/provider resolution and `diatonic explain`
+remain planned in the [Milestone 2 roadmap](docs/milestone-2.md). See
+[ADR-0012](docs/decisions/0012-stage-order-analysis.md) for the internal Stage
+policy. Provider execution, protocols and destructive operations remain outside M2.
 
 ## Setup
 
@@ -95,6 +94,75 @@ A successful result establishes the checks listed above, not complete
 infrastructure semantics. Broader checks require follow-up work. Validation reads
 input files and produces no state or generated IR files. Provider execution,
 `plan`, `apply`, JSON output and IR export commands are not implemented.
+
+## Inspect the logical graph
+
+```sh
+uv run diatonic graph examples/minimal/stages.yml examples/minimal/resources.yml
+```
+
+```text
+Logical dependency graph (offline, not an execution plan)
+Resources: 2; dependency edges: 0; declared reasons: 0; Stage assignments: 1
+
+Vertices (2):
+  Stage/workloads
+  VirtualMachine/docker01
+
+Dependencies (0):
+  (none)
+
+Stage assignments (1):
+  VirtualMachine/docker01 -> Stage/workloads (order=40)
+
+Topological order (2):
+  1. Stage/workloads
+  2. VirtualMachine/docker01
+```
+
+`diatonic graph FILE [FILE ...]` accepts explicit files and multi-document YAML,
+with forward and cross-file references. Include all referenced resources. For the
+full infrastructure example:
+
+```sh
+uv run diatonic graph examples/infrastructure/resources.yml tests/fixtures/reference-stages.yml
+```
+
+A dependency arrow means **prerequisite → dependent**: `Network/servers ->
+VirtualMachine/app` means the Network is a prerequisite of the VM. Explicit
+`depends_on` and implicit VM placement, interface-network and image references
+produce dependency edges. Each unique edge lists every original reason with its
+explicit/implicit classification, owner and field path, including repeated
+references and numeric list indexes.
+
+Stage assignments are shown separately and create no dependency edge. An explicit
+`depends_on: [Stage/workloads]` does create an edge to its dependent. Under the
+internal offline Stage policy, all members assigned to a lower numeric order
+precede all members assigned to a higher order. Equal numeric orders add no
+precedence. Unassigned resources keep no rank or default, including Stage
+vertices unless explicitly assigned themselves. The topological order chooses the
+smallest case-sensitive currently eligible identity, respecting dependencies and
+Stage groups; unassigned vertices may appear before, between or after groups.
+
+`graph` performs the same M1 declaration checks as `validate`, then additionally
+rejects dependency cycles and direct or indirect backwards Stage paths (including
+unassigned intermediates). `validate` retains its declaration-only behavior and
+continues to accept otherwise valid cyclic or Stage-conflicting declarations.
+Neither command checks every infrastructure semantic condition.
+
+Graph success uses stdout only and exits `0`. Expected errors use stderr only and
+exit `1`, without partial graph output; usage errors exit `2`. Cycle diagnostics
+include a closed directed witness and all edge reasons. Stage conflicts show the
+dependency path and both Stage assignments/orders. Sources in diagnostics refer
+to document roots, not exact field positions. Successful output omits source
+filenames, follows canonical graph ordering, and prints `(none)` for empty
+sections. Names and diagnostic paths render literally, without Rich markup.
+Empty YAML files remain invalid; missing file arguments remain usage errors.
+
+This is a read-only, provider-free offline view. It does not initialize providers,
+execute infrastructure operations, generate graph/IR files, manage state or
+journals, perform planning or deployment, or produce an execution/deletion plan.
+There are no JSON, DOT or Mermaid exporters, `plan`, `apply` or `explain` commands.
 
 ## Project documents
 
