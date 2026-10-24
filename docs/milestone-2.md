@@ -1,6 +1,9 @@
 # Milestone 2: Dependency analysis and offline provider resolution
 
-**Status: proposed roadmap for review (M2.0); no M2 implementation is added here.**
+**Progress:** M2.1–M2.8 are implemented. M2.9 adds the final planned offline CLI
+view, `diatonic explain`, for independent review. The original M2.0 roadmap below
+remains the incremental scope and acceptance baseline; ADR-0011–0017 document
+implementation policies. No execution milestone is authorized by this completion.
 
 The normative contract is [Resource Model v0.1](resource-model/v0alpha1.md).
 [ADR-0009](decisions/0009-m2-dependency-lifecycle-boundaries.md) distinguishes its

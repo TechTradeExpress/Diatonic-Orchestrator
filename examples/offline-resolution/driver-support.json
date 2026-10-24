@@ -1,0 +1,8 @@
+{
+  "drivers": [
+    {
+      "driver_id": "example.driver",
+      "capabilities": ["virtual_machine.provision"]
+    }
+  ]
+}
