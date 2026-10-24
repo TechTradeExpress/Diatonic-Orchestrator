@@ -1,0 +1,13 @@
+api_version: iac/v0alpha1
+kind: Stage
+metadata:
+  name: platform
+spec:
+  order: 20
+---
+api_version: iac/v0alpha1
+kind: Stage
+metadata:
+  name: workloads
+spec:
+  order: 40
