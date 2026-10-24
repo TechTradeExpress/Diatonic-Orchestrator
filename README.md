@@ -21,8 +21,10 @@ every Milestone 1 semantic acceptance criterion has been completed.
 M2 dependency classification, immutable cycle-checked graphs, offline Stage
 constraints and deterministic topological analysis are implemented, together with
 `diatonic graph`. Provider/ProviderBinding schemas and static binding-target
-validation are implemented. Capability compatibility, provider selection and
-`diatonic explain` remain planned in the [Milestone 2 roadmap](docs/milestone-2.md). See
+validation are implemented. M2.7 adds library-only explicit phase/capability queries
+and inspection of supplied driver support metadata; neither CLI invokes them.
+Provider selection, environment compatibility and `diatonic explain` remain planned
+in the [Milestone 2 roadmap](docs/milestone-2.md). See
 [ADR-0012](docs/decisions/0012-stage-order-analysis.md) for the internal Stage
 policy. Provider execution, protocols and destructive operations remain outside M2.
 
@@ -257,6 +259,29 @@ counted declared references and creates **zero** dependency edges. Both resource
 remain logical vertices. Ordinary explicit `depends_on` still creates edges, and
 optional `lifecycle.stage` remains a separate Stage assignment. Existing inputs
 without bindings keep their prior CLI behavior and output.
+
+## Offline phase and capability analysis (library only)
+
+`diatonic.compiler.capabilities.analyze_phase_request(index, PhaseRequest(...))`
+analyzes one explicit resource/phase query. A requested managed VM provision phase
+requires `virtual_machine.provision`; external and disabled ownership create no
+managed demand, and omitted/null ownership stays unspecified. Omission details
+are retained separately in the immutable fact. Desired state, prevent_destroy,
+Stage assignments and dependencies never create requests or ownership defaults.
+
+`DriverSupportDescriptor` and `DriverSupportMetadata` hold caller-supplied immutable
+facts, independently inspected by `assess_driver_support`. A listed capability
+means declared supported; an unlisted capability on a supplied descriptor means
+declared unsupported; no descriptor means metadata unavailable. None proves driver
+installation, authentication, environment compatibility or readiness. No Provider
+or ProviderBinding is required just to identify a phase's capability demand.
+
+These APIs do not select bindings or Providers, evaluate selectors, rank priorities,
+discover/import drivers or execute anything. `diatonic validate` and `diatonic graph`
+retain their existing checks and output and do not analyze managed phases
+implicitly. See [ADR-0015](docs/decisions/0015-offline-capability-phase-analysis.md)
+for the seven documented mappings, unsupported cases, API examples and diagnostics.
+Provider selection and an explicit explain interface remain M2.8/M2.9 work.
 
 ## Project documents
 
