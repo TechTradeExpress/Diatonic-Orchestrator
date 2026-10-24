@@ -1,4 +1,4 @@
-"""Tests for a deliberately minimal CLI bootstrap."""
+"""Package metadata and top-level CLI compatibility."""
 
 from typer.testing import CliRunner
 
@@ -24,6 +24,6 @@ def test_cli_version() -> None:
     assert "Diatonic Orchestrator 0.1.0" in result.stdout
 
 
-def test_validate_not_yet_implemented() -> None:
+def test_validate_requires_file_arguments() -> None:
     result = runner.invoke(app, ["validate"])
-    assert result.exit_code != 0
+    assert result.exit_code == 2
