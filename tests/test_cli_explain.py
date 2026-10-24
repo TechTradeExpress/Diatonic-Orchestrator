@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 import yaml
+from rich.text import Text
+from typer.main import get_command
 from typer.testing import CliRunner
 
 from diatonic import __version__
@@ -947,16 +949,18 @@ Topological order (1):
     )
     help_result = runner.invoke(app, ["--help"])
     assert help_result.exit_code == 0
-    assert all(
-        command in help_result.stdout for command in ("validate", "graph", "explain")
-    )
+    visible_help = Text.from_ansi(help_result.stdout).plain
+    assert all(command in visible_help for command in ("validate", "graph", "explain"))
     explain_help = runner.invoke(app, ["explain", "--help"])
     assert explain_help.exit_code == 0
-    assert (
-        "--support-metadata" in explain_help.stdout and "--phase" in explain_help.stdout
-    )
+    registered = get_command(app).commands["explain"]
+    options = {option for parameter in registered.params for option in parameter.opts}
+    assert {"--support-metadata", "--phase"} <= options
     version = runner.invoke(app, ["--version"])
-    assert success(version) == f"Diatonic Orchestrator {__version__}\n"
+    assert (
+        Text.from_ansi(success(version)).plain == f"Diatonic Orchestrator {__version__}"
+    )
+    assert version.stdout.endswith("\n")
 
 
 MANAGED_TAIL = """Offline phase analysis:
@@ -1043,3 +1047,19 @@ def test_deeply_nested_support_json_is_a_controlled_local_error(tmp_path):
         invoke("VirtualMachine/app", path, phase="provision", support=support),
         "invalid_support_metadata",
     )
+
+
+@pytest.mark.parametrize("columns", [80, 160])
+@pytest.mark.parametrize("force_color", [None, "1"])
+def test_explain_help_options_render_with_or_without_ansi(columns, force_color):
+    result = runner.invoke(
+        app,
+        ["explain", "--help"],
+        env={"COLUMNS": str(columns), "FORCE_COLOR": force_color, "NO_COLOR": ""},
+    )
+    assert result.exit_code == 0
+    assert result.stderr == ""
+    # Rich styles pieces of a flag independently; raw ANSI output is not a token.
+    visible = Text.from_ansi(result.stdout).plain
+    assert "--support-metadata" in visible
+    assert "--phase" in visible
