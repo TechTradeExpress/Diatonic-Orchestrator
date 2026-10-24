@@ -8,11 +8,12 @@ from diatonic.model.hypervisor import Hypervisor
 from diatonic.model.image import Image
 from diatonic.model.network import Network
 from diatonic.model.provider import Provider
+from diatonic.model.provider_binding import ProviderBinding
 from diatonic.model.stage import Stage
 from diatonic.model.virtual_machine import VirtualMachine
 
 Resource = Annotated[
-    Stage | Network | Hypervisor | Image | VirtualMachine | Provider,
+    Stage | Network | Hypervisor | Image | VirtualMachine | Provider | ProviderBinding,
     Field(discriminator="kind"),
 ]
 _resource_adapter = TypeAdapter(Resource)

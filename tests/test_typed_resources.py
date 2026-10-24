@@ -102,7 +102,7 @@ def test_vm_allocations_must_be_positive(field: str, value: int):
     assert exc.value.errors()[0]["type"] == "greater_than"
 
 
-@pytest.mark.parametrize("kind", ["Project", "ProviderBinding", "Unknown", "stage", ""])
+@pytest.mark.parametrize("kind", ["Project", "Service", "Unknown", "stage", ""])
 def test_unsupported_kinds_fail_at_discriminator(kind: str):
     with pytest.raises(ValidationError) as exc:
         parse_resource(document(kind))

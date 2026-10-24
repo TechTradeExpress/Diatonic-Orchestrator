@@ -127,8 +127,9 @@ def test_schema_requiredness_exports_and_supported_discriminators():
         "Image",
         "VirtualMachine",
         "Provider",
+        "ProviderBinding",
     }
-    assert "ProviderBinding" not in mapping
+    assert "Project" not in mapping
 
 
 @pytest.mark.parametrize(
@@ -251,7 +252,7 @@ def test_non_string_mapping_keys_are_not_coerced(key, nested):
 def test_concrete_provider_requires_exact_kind(kind):
     with pytest.raises(ValidationError):
         Provider.model_validate(provider(kind=kind))
-    if kind != "VirtualMachine":
+    if kind not in ("VirtualMachine", "ProviderBinding"):
         with pytest.raises(ValidationError) as caught:
             parse_resource(provider(kind=kind))
         assert caught.value.errors()[0]["type"] == "union_tag_invalid"
