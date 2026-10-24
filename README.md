@@ -11,8 +11,8 @@ Diatonic Orchestrator is an early-stage open-source project. It aims to provide 
 The Milestone 1 compiler pipeline and `diatonic validate` CLI are implemented:
 strict YAML loading, typed resource schemas, canonical identities, declared
 reference resolution, network-scoped IPv4 semantic checks and immutable normalized
-IR. Supported resource kinds are `Stage`, `Network`, `Hypervisor`, `Image` and
-`VirtualMachine`.
+IR. The M1 resource kinds are `Stage`, `Network`, `Hypervisor`, `Image` and
+`VirtualMachine`; M2 also supports portable `Provider` instance declarations.
 
 Validation covers the implemented declaration checks below. Broader semantic
 conditions in the design document remain future work; this does not assert that
@@ -20,7 +20,8 @@ every Milestone 1 semantic acceptance criterion has been completed.
 
 M2 dependency classification, immutable cycle-checked graphs, offline Stage
 constraints and deterministic topological analysis are implemented, together with
-`diatonic graph`. Offline capability/provider resolution and `diatonic explain`
+`diatonic graph`. Provider instance schemas are implemented; ProviderBinding,
+offline capability/provider resolution and `diatonic explain`
 remain planned in the [Milestone 2 roadmap](docs/milestone-2.md). See
 [ADR-0012](docs/decisions/0012-stage-order-analysis.md) for the internal Stage
 policy. Provider execution, protocols and destructive operations remain outside M2.
@@ -163,6 +164,44 @@ This is a read-only, provider-free offline view. It does not initialize provider
 execute infrastructure operations, generate graph/IR files, manage state or
 journals, perform planning or deployment, or produce an execution/deletion plan.
 There are no JSON, DOT or Mermaid exporters, `plan`, `apply` or `explain` commands.
+
+## Declare Provider instances
+
+A Provider declaration gives a driver configuration a logical name:
+
+```yaml
+api_version: iac/v0alpha1
+kind: Provider
+metadata:
+  name: primary
+spec:
+  driver: example.driver
+  config: {}
+```
+
+The identity is `Provider/primary`; `example.driver` is an opaque driver ID.
+Multiple instances may share that ID. Both `driver` and `config` are required;
+empty config is valid. Driver IDs follow the existing non-empty, slash-free,
+whitespace-free string syntax, with no implementation allowlist. Configuration
+accepts arbitrary nested JSON data with string map keys and finite numbers.
+Unknown config keys are retained; unknown fields directly under `spec` fail.
+Requiring an explicit config mapping is the documented
+[M2.5 schema decision](docs/decisions/0013-provider-instance-schema.md), rather
+than an implicit empty-config default.
+
+Nested `secret_ref` values are opaque data: they are preserved without lookup,
+interpolation or environment expansion. Driver/config contents create no resource
+references or dependency edges. Shared explicit `depends_on` and optional
+`lifecycle.stage` still work normally. A Provider with neither is an isolated
+vertex in `diatonic graph`. Lifecycle declarations introduce no ownership defaults
+or operations.
+
+Save the example to a file and pass it to `diatonic validate` or `diatonic graph`.
+These commands validate the declaration without importing, discovering,
+initializing or executing a driver, checking credentials, or contacting an
+endpoint. Success does not prove that a driver exists or that its opaque config
+is usable. `ProviderBinding`, capabilities, provider selection and execution
+remain deferred. Use secret references, never actual credentials, in configuration.
 
 ## Project documents
 

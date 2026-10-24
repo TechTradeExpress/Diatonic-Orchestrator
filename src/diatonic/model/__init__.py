@@ -5,6 +5,7 @@ from diatonic.model.hypervisor import Hypervisor, HypervisorSpec, ManagementSpec
 from diatonic.model.image import Image, ImageSpec, OperatingSystemSpec
 from diatonic.model.lifecycle import Lifecycle, Phases
 from diatonic.model.network import Network, NetworkIPv4Spec, NetworkSpec
+from diatonic.model.provider import Provider, ProviderSpec
 from diatonic.model.resource import Resource, parse_resource
 from diatonic.model.stage import Stage, StageSpec
 from diatonic.model.types import ResourceName, ResourceReference
@@ -40,6 +41,8 @@ __all__ = [
     "OperatingSystemSpec",
     "Phases",
     "PlacementSpec",
+    "Provider",
+    "ProviderSpec",
     "Resource",
     "ResourceBase",
     "ResourceName",
