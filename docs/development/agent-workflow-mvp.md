@@ -1,5 +1,15 @@
 # Workflow MVP.1: agent task, authorization and recovery contract
 
+> **FUTURE DESIGN / NOT THE CURRENT ACTIVE WORKFLOW**
+>
+> This historical and prospective runner specification is not implemented. The
+> current human-coordinated process is defined in the canonical
+> [contributing workflow](../contributing-workflow.md). Implementing or adopting
+> this automated model requires a separate approved task and an explicit migration
+> decision. The detailed contract below, applicable architecture decisions and
+> security constraints remain unchanged; its admission labels, mutex, checkpoints,
+> recovery and automatic review coordination do not govern current manual tasks.
+
 Status: documentation-only contract for Issue #48. No runner code, Codex launch,
 GitHub mutation, Work trigger, unattended execution or live-run authorization is
 provided here. Future implementation and live use require separately scoped human

@@ -391,6 +391,14 @@ execution readiness guarantee, driver initialization, network access, state writ
 operation planning, scheduling or deployment. See
 [ADR-0017](docs/decisions/0017-explain-cli.md) for the complete CLI contract.
 
+## Development workflow
+
+Development follows the [human-coordinated contributing workflow](docs/contributing-workflow.md):
+ChatGPT prepares Issues and independently reviews PRs, the maintainer assigns work
+to Codex CLI, and only the maintainer merges. Technical acceptance closes the Issue
+and makes the PR ready for review; it does not mean the PR has merged. The
+[automated runner design](docs/development/agent-workflow-mvp.md) remains deferred.
+
 ## Project documents
 
 - [`docs/resource-model/v0alpha1.md`](docs/resource-model/v0alpha1.md): normative architecture/design proposal, source of truth for the project.
