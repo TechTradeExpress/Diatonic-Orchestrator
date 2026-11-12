@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Literal
+from typing import Literal, TypeGuard
 
 from pydantic import TypeAdapter, ValidationError
 
@@ -24,7 +24,7 @@ from diatonic.model import (
     VirtualMachine,
 )
 from diatonic.model.base import ResourceBase
-from diatonic.model.lifecycle import Lifecycle, Phases
+from diatonic.model.lifecycle import Lifecycle, Ownership, Phases
 from diatonic.model.types import ResourceName, ResourceReference
 
 Phase = Literal["observe", "provision", "configure"]
@@ -45,15 +45,17 @@ OwnershipOrigin = Literal[
 CAPABILITY_VOCABULARY: Mapping[tuple[str, Phase], str] = MappingProxyType(
     dict(
         sorted(
-            {
-                ("VirtualMachine", "observe"): "virtual_machine.observe",
-                ("VirtualMachine", "provision"): "virtual_machine.provision",
-                ("VirtualMachine", "configure"): "virtual_machine.configure",
-                ("Network", "observe"): "network.observe",
-                ("Network", "provision"): "network.provision",
-                ("Hypervisor", "observe"): "hypervisor.observe",
-                ("Hypervisor", "configure"): "hypervisor.configure",
-            }.items()
+            dict[tuple[str, Phase], str](
+                {
+                    ("VirtualMachine", "observe"): "virtual_machine.observe",
+                    ("VirtualMachine", "provision"): "virtual_machine.provision",
+                    ("VirtualMachine", "configure"): "virtual_machine.configure",
+                    ("Network", "observe"): "network.observe",
+                    ("Network", "provision"): "network.provision",
+                    ("Hypervisor", "observe"): "hypervisor.observe",
+                    ("Hypervisor", "configure"): "hypervisor.configure",
+                }
+            ).items()
         )
     )
 )
@@ -201,6 +203,10 @@ def _source(source: object, request: PhaseRequest) -> PhaseSource:
     )
 
 
+def _is_ownership(value: object) -> TypeGuard[Ownership]:
+    return type(value) is str and value in ("managed", "external", "disabled")
+
+
 def _ownership(
     resource: ResourceBase, request: PhaseRequest, source: PhaseSource
 ) -> tuple[OwnershipOutcome, OwnershipOrigin]:
@@ -240,7 +246,7 @@ def _ownership(
         return "unspecified", "phase_omitted"
     if value is None:
         return "unspecified", "phase_null"
-    if type(value) is not str or value not in ("managed", "external", "disabled"):
+    if not _is_ownership(value):
         raise _invalid_phase_input(
             "requested ownership is not managed, external, disabled or null",
             request,

@@ -29,4 +29,6 @@ class Image(ResourceBase):
     """A named image that providers may map to their own artifacts later."""
 
     kind: Literal["Image"]
-    spec: ImageSpec
+    # Pydantic replaces the envelope field with this required, validated spec.
+    # Keep the base schema unchanged; see the contributing typing baseline.
+    spec: ImageSpec  # type: ignore[assignment]

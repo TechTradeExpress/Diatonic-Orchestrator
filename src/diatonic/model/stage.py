@@ -16,4 +16,6 @@ class Stage(ResourceBase):
     """A named coarse orchestration boundary."""
 
     kind: Literal["Stage"]
-    spec: StageSpec
+    # Pydantic replaces the envelope field with this required, validated spec.
+    # Keep the base schema unchanged; see the contributing typing baseline.
+    spec: StageSpec  # type: ignore[assignment]

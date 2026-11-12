@@ -187,7 +187,7 @@ def _inputs(
         lifecycle = index.resources[identity].resource.lifecycle
         if lifecycle is not None and not isinstance(lifecycle, Lifecycle):
             raise StageOrderInputError("expected validated lifecycle", identity)
-        target = (
+        model_target = (
             f"Stage/{lifecycle.stage}"
             if lifecycle is not None and lifecycle.stage is not None
             else None
@@ -195,7 +195,7 @@ def _inputs(
         recorded = (
             assignments[identity].stage_identity if identity in assignments else None
         )
-        if target != recorded:
+        if model_target != recorded:
             raise StageOrderInputError(
                 "model/graph Stage assignment mismatch", identity
             )

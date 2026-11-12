@@ -1,15 +1,20 @@
 """Terminal-safe presentation; never used for identity matching or compilation."""
 
 from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from typer import Context
 from typer.core import TyperGroup
 
-try:  # Newer Typer vendors Click; older supported Typer uses external Click.
+if TYPE_CHECKING:
+    # Match the backend Context expected by the checked TyperGroup implementation.
+    from typer._click.core import Context
     from typer._click.exceptions import UsageError
-except ImportError:  # pragma: no cover - depends on the installed Typer version
-    from click import UsageError
+else:
+    try:  # Newer Typer vendors Click; older supported Typer uses external Click.
+        from typer._click.core import Context
+        from typer._click.exceptions import UsageError
+    except ImportError:  # pragma: no cover - depends on the installed Typer version
+        from click import Context, UsageError
 
 
 def terminal_text(value: str) -> str:

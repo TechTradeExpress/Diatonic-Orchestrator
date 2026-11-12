@@ -588,7 +588,18 @@ def test_corrupted_index_inputs_do_not_leak_python_exceptions(tmp_path, corrupti
 
 
 @pytest.mark.parametrize(
-    "corruption", ["object", "descriptors", "duplicate", "capabilities", "driver"]
+    "corruption",
+    [
+        "object",
+        "descriptors",
+        "duplicate",
+        "capabilities",
+        "driver",
+        "capabilities-none",
+        "capabilities-item",
+        "missing-capabilities",
+        "missing-driver",
+    ],
 )
 def test_malformed_supplied_metadata_is_controlled(tmp_path, corruption):
     support = metadata("example.driver")
@@ -602,9 +613,21 @@ def test_malformed_supplied_metadata_is_controlled(tmp_path, corruption):
         object.__setattr__(
             support.descriptors[0], "capabilities", (CAPABILITY, CAPABILITY)
         )
-    else:
+    elif corruption == "driver":
         object.__setattr__(support.descriptors[0], "driver_id", False)
-    failure(inputs(tmp_path), support, "invalid_provider_resolution_input")
+    elif corruption == "capabilities-none":
+        object.__setattr__(support.descriptors[0], "capabilities", None)
+    elif corruption == "capabilities-item":
+        object.__setattr__(support.descriptors[0], "capabilities", (CAPABILITY, False))
+    elif corruption == "missing-capabilities":
+        object.__delattr__(support.descriptors[0], "capabilities")
+    else:
+        object.__delattr__(support.descriptors[0], "driver_id")
+    diagnostic = failure(inputs(tmp_path), support, "invalid_provider_resolution_input")
+    if corruption not in ("object", "descriptors"):
+        assert diagnostic.message == (
+            "supplied driver metadata no longer satisfies M2.7 validation"
+        )
 
 
 def test_stale_binding_and_source_changes_are_rejected(tmp_path):
@@ -889,3 +912,14 @@ def test_error_records_are_detached_and_deeply_immutable(tmp_path):
         diagnostic.candidates[0].match_labels["site"] = "changed"
     with pytest.raises(TypeError):
         del diagnostic.sources["Provider/primary"]
+
+
+def test_supplied_descriptor_capability_lists_are_still_snapshotted(tmp_path):
+    support = metadata("example.driver")
+    values = [CAPABILITY]
+    object.__setattr__(support.descriptors[0], "capabilities", values)
+    result = resolve_phase_provider(*inputs(tmp_path), support)
+    values.clear()
+    assert result.fact.status == "selected"
+    assert result.fact.selection.driver_id == "example.driver"
+    assert result.fact.candidates[0].support_status == "declared_supported"

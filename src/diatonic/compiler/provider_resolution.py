@@ -236,13 +236,14 @@ def _phase_context(
         current = analyze_phase_request(index, analysis.fact.request)
     except PhaseAnalysisError as error:
         source = _source(error.diagnostic.source)
-        sources = (
-            {error.diagnostic.resource_identity: source} if source is not None else {}
+        identity = error.diagnostic.resource_identity
+        error_sources = (
+            {identity: source} if source is not None and identity is not None else {}
         )
         raise _invalid(
             f"requested analysis/index is inconsistent ({error.diagnostic.code}); "
             "analyze again",
-            sources=sources,
+            sources=error_sources,
         ) from None
     source = _source(current.source)
     if source is None:
@@ -428,14 +429,30 @@ def _metadata(
     ):
         raise _invalid("malformed driver metadata descriptors", phase, sources)
     try:
-        return DriverSupportMetadata(
-            tuple(
-                DriverSupportDescriptor(
-                    getattr(v, "driver_id", None), getattr(v, "capabilities", None)
+        descriptors = []
+        for value in values:
+            driver = getattr(value, "driver_id", None)
+            capabilities = getattr(value, "capabilities", None)
+            # Mutated/missing fields still produce the same controlled error.
+            if not isinstance(driver, str) or not isinstance(
+                capabilities, (list, tuple)
+            ):
+                raise _invalid(
+                    "supplied driver metadata no longer satisfies M2.7 validation",
+                    phase,
+                    sources,
                 )
-                for v in values
-            )
-        )
+            names: list[str] = []
+            for capability in capabilities:
+                if not isinstance(capability, str):
+                    raise _invalid(
+                        "supplied driver metadata no longer satisfies M2.7 validation",
+                        phase,
+                        sources,
+                    )
+                names.append(capability)
+            descriptors.append(DriverSupportDescriptor(driver, tuple(names)))
+        return DriverSupportMetadata(tuple(descriptors))
     except DriverSupportError:
         raise _invalid(
             "supplied driver metadata no longer satisfies M2.7 validation",
@@ -492,6 +509,8 @@ def _evaluate(
     metadata: DriverSupportMetadata,
     sources: Mapping[str, ResolutionSource],
 ) -> tuple[CandidateEvaluation, ...]:
+    # The managed phase was re-analyzed by _phase_context before evaluation.
+    assert phase.required_capability is not None
     resource = index.resources[phase.request.resource_identity].resource
     resource_metadata = getattr(resource, "metadata", None)
     labels = getattr(resource_metadata, "labels", None)
@@ -596,6 +615,7 @@ def resolve_phase_provider(
     decisive = [c for c in unknown if highest is None or c.priority >= highest]
     top = [c for c in supported if c.priority == highest]
 
+    relevant: tuple[str, ...]
     if not any(c.support_status is not None for c in candidates):
         code: ResolutionCode | None = "no_matching_provider_binding"
         message = "no binding matches the requested capability, kind and labels"
@@ -625,6 +645,13 @@ def resolve_phase_provider(
         relevant = ()
 
     final = []
+    outcome: CandidateOutcome
+    reason: Literal[
+        "lower_priority",
+        "selection_uncertain",
+        "highest_priority_tie",
+        "selected_highest_priority",
+    ]
     for candidate in candidates:
         if candidate.support_status == "declared_supported":
             if candidate.priority != highest:
@@ -662,6 +689,8 @@ def resolve_phase_provider(
             ResolutionDiagnostic(code, message, phase, trace, relevant, sources)
         )
     winner = top[0]
+    # Declared support is evaluated only after validating a matching driver's ID.
+    assert winner.driver_id is not None
     selection = ProviderSelection(
         winner.binding_identity,
         winner.provider_identity,

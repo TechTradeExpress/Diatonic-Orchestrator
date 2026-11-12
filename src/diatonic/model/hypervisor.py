@@ -23,4 +23,6 @@ class Hypervisor(ResourceBase):
     """A hypervisor with inherited explicit lifecycle ownership."""
 
     kind: Literal["Hypervisor"]
-    spec: HypervisorSpec
+    # Pydantic replaces the envelope field with this required, validated spec.
+    # Keep the base schema unchanged; see the contributing typing baseline.
+    spec: HypervisorSpec  # type: ignore[assignment]

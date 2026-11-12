@@ -27,4 +27,6 @@ class Network(ResourceBase):
     """A named portable network."""
 
     kind: Literal["Network"]
-    spec: NetworkSpec
+    # Pydantic replaces the envelope field with this required, validated spec.
+    # Keep the base schema unchanged; see the contributing typing baseline.
+    spec: NetworkSpec  # type: ignore[assignment]
