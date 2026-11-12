@@ -18,6 +18,7 @@ from diatonic.cli_explain import (
     field_text as _field_text,
 )
 from diatonic.cli_support import SupportMetadataError, load_support_metadata
+from diatonic.cli_text import TerminalSafeGroup, terminal_lines, terminal_text
 from diatonic.compiler.capabilities import (
     PhaseAnalysisError,
     PhaseRequest,
@@ -60,6 +61,7 @@ from diatonic.compiler.stages import (
 from diatonic.model.types import ResourceReference
 
 app = typer.Typer(
+    cls=TerminalSafeGroup,
     name="diatonic",
     help="Diatonic Orchestrator: provider-agnostic IaC orchestration.",
     no_args_is_help=True,
@@ -101,7 +103,7 @@ def _error_text(
     if isinstance(error, ProviderBindingValidationError):
         return str(error)
     if isinstance(error, YamlLoadError):
-        # YAML parser errors may carry precise problem marks; keep them as supplied.
+        # Keep precise parser marks; the output boundary escapes the opaque message.
         return str(error)
     if isinstance(error, NormalizationError):
         return (
@@ -171,7 +173,9 @@ def validate(
         SemanticValidationError,
         ProviderBindingValidationError,
     ) as error:
-        Console(stderr=True).print(Text(_error_text(error)), soft_wrap=True)
+        Console(stderr=True).print(
+            Text(terminal_text(_error_text(error))), soft_wrap=True
+        )
         raise typer.Exit(code=1) from None
     resources, references = len(ir.resources), len(ir.references)
     Console().print(
@@ -225,7 +229,7 @@ def _graph_text(graph: DependencyGraph, analysis: StageOrderAnalysis) -> str:
         [f"  {i}. {identity}" for i, identity in enumerate(analysis.order, 1)]
         or ["  (none)"]
     )
-    return "\n".join(lines)
+    return terminal_lines(lines)
 
 
 def _graph_error_text(
@@ -236,14 +240,14 @@ def _graph_error_text(
     | StageOrderConflictError,
 ) -> str:
     if isinstance(error, DependencyClassificationError):
-        return (
+        return terminal_text(
             f"{_source_text(error.source)}: {error.code}; "
             f"resource={error.resource_identity}; "
             f"field={error.field_path!r}; "
             f"target={error.target_identity}; unsupported reference field"
         )
     if isinstance(error, (DependencyGraphInputError, StageOrderInputError)):
-        return str(error)
+        return terminal_text(str(error))
     diagnostic = error.diagnostic
     prefix = "dependency path " if isinstance(error, StageOrderConflictError) else ""
     lines = [f"{error.code}: {prefix}{' -> '.join(diagnostic.witness)}"]
@@ -262,7 +266,7 @@ def _graph_error_text(
         f"  resource={identity}; {_source_text(source)}"
         for identity, source in diagnostic.sources.items()
     )
-    return "\n".join(lines)
+    return terminal_lines(lines)
 
 
 @app.command()
@@ -294,7 +298,9 @@ def graph(
         SemanticValidationError,
         ProviderBindingValidationError,
     ) as error:
-        Console(stderr=True).print(Text(_error_text(error)), soft_wrap=True)
+        Console(stderr=True).print(
+            Text(terminal_text(_error_text(error))), soft_wrap=True
+        )
         raise typer.Exit(code=1) from None
     except (
         DependencyClassificationError,
@@ -357,8 +363,11 @@ def explain(
         if identity not in index.resources:
             Console(stderr=True).print(
                 Text(
-                    f"unknown_explain_resource: resource={identity}; "
-                    "declare the exact case-sensitive identity in the supplied files"
+                    terminal_text(
+                        f"unknown_explain_resource: resource={identity}; "
+                        "declare the exact case-sensitive identity "
+                        "in the supplied files"
+                    )
                 ),
                 soft_wrap=True,
             )
@@ -380,7 +389,9 @@ def explain(
         SemanticValidationError,
         ProviderBindingValidationError,
     ) as error:
-        Console(stderr=True).print(Text(_error_text(error)), soft_wrap=True)
+        Console(stderr=True).print(
+            Text(terminal_text(_error_text(error))), soft_wrap=True
+        )
         raise typer.Exit(code=1) from None
     except (
         DependencyClassificationError,
@@ -392,7 +403,7 @@ def explain(
         Console(stderr=True).print(Text(_graph_error_text(error)), soft_wrap=True)
         raise typer.Exit(code=1) from None
     except (PhaseAnalysisError, SupportMetadataError) as error:
-        Console(stderr=True).print(Text(str(error)), soft_wrap=True)
+        Console(stderr=True).print(Text(terminal_text(str(error))), soft_wrap=True)
         raise typer.Exit(code=1) from None
     except ProviderResolutionError as error:
         Console(stderr=True).print(Text(resolution_error_text(error)), soft_wrap=True)

@@ -1,5 +1,6 @@
 """Plain-text presentation of existing offline analyses; no selection algorithms."""
 
+from diatonic.cli_text import terminal_lines
 from diatonic.compiler.capabilities import PhaseAnalysis
 from diatonic.compiler.graph import DependencyEdge, DependencyGraph
 from diatonic.compiler.provider_resolution import (
@@ -96,7 +97,7 @@ def resolution_error_text(error: ProviderResolutionError) -> str:
         lines.append(f"  resource={identity}; {location})")
     if not diagnostic.sources:
         lines.append("  (none)")
-    return "\n".join(lines)
+    return terminal_lines(lines)
 
 
 def explanation_text(
@@ -138,7 +139,7 @@ def explanation_text(
         lines.append(f"  lifecycle.phases.{name}: {_declared(phases, name)}")
     if analysis is None:
         lines.extend(["", "Provider resolution: not requested"])
-        return "\n".join(lines)
+        return terminal_lines(lines)
     fact = analysis.fact
     lines.extend(
         [
@@ -174,4 +175,4 @@ def explanation_text(
                 *candidate_lines(resolution.fact.candidates),
             ]
         )
-    return "\n".join(lines)
+    return terminal_lines(lines)
