@@ -391,6 +391,26 @@ execution readiness guarantee, driver initialization, network access, state writ
 operation planning, scheduling or deployment. See
 [ADR-0017](docs/decisions/0017-explain-cli.md) for the complete CLI contract.
 
+## Terminal output
+
+`validate`, `graph` and `explain` escape untrusted text at presentation time.
+C0 controls (U+0000–U+001F), DEL (U+007F) and C1 controls (U+0080–U+009F),
+including ESC, become lowercase printable `\xNN` escapes. Literal backslashes
+become `\\`, so an actual ESC (`\x1b`) remains distinguishable from literal
+backslash text (`\\x1b`). Printable Unicode and Rich markup brackets remain
+literal. For example, a name containing ESC followed by `[31m` displays as
+`demo\x1b[31m` without changing terminal color.
+
+Only newlines inserted by the CLI's line formatter are preserved as formatting;
+controls inside values, paths and opaque diagnostic messages are escaped, including
+embedded tabs and newlines. This applies to success output, declaration/analysis
+errors and usage diagnostics, independently of color settings. Third-party error
+messages that already use representations may show doubled backslashes.
+
+This changes presentation only: canonical identity matching, source paths used for
+file access, compiler ordering, IR, APIs and exit codes are unchanged. Ordinary
+output without controls or backslashes keeps its existing formatting.
+
 ## Development workflow
 
 Development follows the [human-coordinated contributing workflow](docs/contributing-workflow.md):
