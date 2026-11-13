@@ -1,14 +1,20 @@
 # ADR-0021: Dependency reproducibility and Python support
 
-- **Status:** Proposed / human approval pending.
+- **Status:** Accepted (policy); implementation staged.
 - **Date:** 2026-11-13.
 - **Evidence baseline:** `005238515ddeb24be322d42fb84d7981278eaf87`, after PR #59.
 - **Tracking:** [Issue #60](https://github.com/TechTradeExpress/Diatonic-Orchestrator/issues/60),
   historical [M2-AUD-004](../reviews/milestone-2-architecture-quality-review.md#m2-aud-004--p2-reproducibility-and-supported-version-evidence-are-limited).
-- **Scope:** Documentation only. Merging this Proposed ADR delivers a proposal;
-  it neither adopts the policy nor authorizes implementation or closes the audit.
+- **Human decision:** Maintainer `su-17`, 2026-11-13: variant A (dev/CI lock,
+  separate upgrade lane and staged Python compatibility policy) approved.
+  [Issue #62](https://github.com/TechTradeExpress/Diatonic-Orchestrator/issues/62)
+  records that approval and authorizes stage 1 only.
+- **Implementation:** Stage 1 introduces the committed lock and pinned baseline
+  described in the [developer guide](../contributing-workflow.md#locked-development-and-ci-baseline).
+  Upgrade/extra-Python lanes remain unimplemented pending separate assignment;
+  policy acceptance is not completion of M2-AUD-004 or authorization for M3.
 
-## Current evidence
+## Original proposal evidence (unchanged)
 
 | Source at the baseline | Observed state, not a compatibility guarantee |
 | --- | --- |
@@ -23,7 +29,7 @@
 A fresh checkout resolves the declared ranges and generates a local lock on sync.
 An existing lock influences later resolution; ordinary sync is not an upgrade
 command. These are evidence limits, not demonstrated instability or newer-Python
-incompatibility. The historical audit and existing ADR dispositions stay unchanged.
+incompatibility. The historical audit and other ADR dispositions stay unchanged.
 
 ## Options
 
@@ -36,10 +42,11 @@ Neither policy proves all permitted dependency combinations, oldest allowed vers
 or hermetic builds. A Python lock alone does not freeze OS images, Python binaries,
 uv, Actions implementations, isolated build-backend dependencies or artifact availability.
 
-## Recommended policy (not adopted)
+## Accepted policy (variant A; staged implementation)
 
-Recommend **A plus an independent floating-upgrade lane**, rather than locking all
-lanes or relying solely on floating evidence:
+The maintainer accepted **A plus an independent floating-upgrade lane**. Stage 1
+implements the locked baseline; upgrade and compatibility lanes below are future
+work requiring their own assigned tasks:
 
 - Commit one generated universal `uv.lock` for repository runtime/dev environments;
   keep existing dependency ranges in published wheel/sdist metadata. Consumers
@@ -76,10 +83,10 @@ The uv documentation describes [universal lockfiles](https://docs.astral.sh/uv/c
 and [freshness checks and explicit upgrades](https://docs.astral.sh/uv/concepts/projects/sync/).
 The lane split above is this project's proposed choice, not a uv requirement.
 
-## Proposed Python compatibility policy
+## Accepted Python policy (implementation deferred)
 
-Keep `>=3.12` unchanged now. Recommend minimum-plus-newest-stable CPython checks on
-PRs once implemented, with a release-time sweep of intervening stable minor versions
+Keep `>=3.12` unchanged now. The accepted policy calls for minimum-plus-newest-stable
+CPython checks on PRs once implemented, with a release-time sweep of intervening stable minor versions
 still supported upstream. Use the same lock with its applicable Python markers;
 record the resolved environment separately for each interpreter. No platform or
 alternative-interpreter support is established by these Linux tests.
@@ -104,18 +111,19 @@ at least one release's deprecation notice, considering upstream end-of-life and
 user impact. Raising `requires-python`, changing classifiers/docs and moving the
 minimum CI lane must be reviewed together; never drop a version merely to hide a
 failure. Retain mypy's 3.12 static target while 3.12 is the declared minimum. Static
-analysis and per-interpreter runtime evidence remain distinct. This is a proposal
-for interpreting/testing the existing open-ended requirement, not new test evidence.
+analysis and per-interpreter runtime evidence remain distinct. This accepted policy
+for interpreting/testing the existing open-ended requirement is not new test evidence.
 
-## Human decision and later implementation
+## Human decision and staged implementation
 
-The maintainer must explicitly choose A plus the upgrade lane, choose B with its
-snapshot strategy, or request revision; approve the compatibility/admission and
-retirement rules separately in that decision record. Record actor/date and scope
-before changing this ADR's status. Technical review, Issue closure as *proposal
-delivered*, or merging this Proposed text is not adoption or execution permission.
+The human decision above accepts variant A and the compatibility/admission and
+retirement policy. The earlier proposal delivery in Issue #60 and its merge did
+not adopt it; the explicit decision recorded in Issue #62 did. Later policy
+revisions still require human review. Approval of the overall strategy does not
+authorize stages 2–3, infrastructure execution or broader milestone work.
 
-If adopted, authorize these small Issues/PRs in order; none is created here:
+Implementation is staged in the order below. Issue #62 authorizes stage 1 only;
+its technical acceptance is distinct from completing the remaining stages:
 
 1. **Reproducible baseline:** select tool/interpreter versions, generate/review the
    lock and migrate the existing job to locked sync/run. Acceptance: exact-head
@@ -136,6 +144,6 @@ If adopted, authorize these small Issues/PRs in order; none is created here:
    versions, and the original `lint-and-test` check remains intact. Document tested
    versions, coverage limits, new-version admission and approved retirement steps.
 
-No lock, dependency/metadata change, CI implementation, branch-rule change or
-runtime/provider operation is delivered by this proposal. M2-AUD-004 remains
-unremediated until a human decision and the separately authorized evidence exist.
+Stage 1 does not change consumer dependency metadata, branch rules or runtime/API
+behavior. Stages 2–3 remain deferred; no upgraded-dependency lane, broader tested
+Python promise or complete M2-AUD-004 remediation is claimed.
