@@ -75,7 +75,12 @@ class _StrictSafeLoader(yaml.SafeLoader):
                 "YAML aliases are not supported; write the value explicitly",
                 event.start_mark,
             )
-        return super().compose_node(parent, index)
+        # PyYAML passes None, sequence positions and mapping-key Nodes as index;
+        # its Composer stub currently permits only int. Keep the real call contract.
+        node = super().compose_node(parent, index)  # type: ignore[arg-type]
+        # Composer returns a Node or raises; aliases were rejected above.
+        assert node is not None
+        return node
 
 
 def _check_mapping_keys(root: Node) -> None:
@@ -134,6 +139,8 @@ def load_yaml_file(path: str | Path) -> list[LoadedDocument]:
         loader = _StrictSafeLoader(text)
         while loader.check_data():
             node = loader.get_node()
+            # check_data established that the stream has a document to compose.
+            assert node is not None
             if isinstance(node, ScalarNode) and node.tag == "tag:yaml.org,2002:null":
                 raise _PolicyError(
                     "empty_document", "empty/null YAML documents are not allowed",

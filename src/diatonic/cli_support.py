@@ -103,7 +103,9 @@ def load_support_metadata(path: Path) -> DriverSupportMetadata:
             )
         try:
             descriptors.append(
-                DriverSupportDescriptor(entry["driver_id"], entry["capabilities"])
+                DriverSupportDescriptor(
+                    entry["driver_id"], tuple(entry["capabilities"])
+                )
             )
         except DriverSupportError as error:
             raise SupportMetadataError(

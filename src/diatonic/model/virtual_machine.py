@@ -76,4 +76,6 @@ class VirtualMachine(ResourceBase):
     """Typed VM resource, preserving the shared envelope."""
 
     kind: Literal["VirtualMachine"]
-    spec: VirtualMachineSpec
+    # Pydantic replaces the envelope field with this required, validated spec.
+    # Keep the base schema unchanged; see the contributing typing baseline.
+    spec: VirtualMachineSpec  # type: ignore[assignment]

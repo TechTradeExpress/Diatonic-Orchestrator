@@ -20,4 +20,6 @@ class Provider(ResourceBase):
     """A logical Provider instance, whose identity is independent of its driver."""
 
     kind: Literal["Provider"]
-    spec: ProviderSpec
+    # Pydantic replaces the envelope field with this required, validated spec.
+    # Keep the base schema unchanged; see the contributing typing baseline.
+    spec: ProviderSpec  # type: ignore[assignment]

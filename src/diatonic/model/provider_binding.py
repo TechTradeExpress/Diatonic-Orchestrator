@@ -35,4 +35,6 @@ class ProviderBindingSpec(StrictModel):
 
 class ProviderBinding(ResourceBase):
     kind: Literal["ProviderBinding"]
-    spec: ProviderBindingSpec
+    # Pydantic replaces the envelope field with this required, validated spec.
+    # Keep the base schema unchanged; see the contributing typing baseline.
+    spec: ProviderBindingSpec  # type: ignore[assignment]

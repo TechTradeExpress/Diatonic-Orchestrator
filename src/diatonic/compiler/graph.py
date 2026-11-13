@@ -68,7 +68,7 @@ def _path(path: FieldPath, owner: str) -> FieldPath:
 
 
 def _reason_key(fact: DependencyFact) -> tuple:
-    groups = {
+    groups: dict[FieldPath, int] = {
         ("depends_on",): 0,
         ("spec", "placement"): 1,
         ("spec", "interfaces"): 2,

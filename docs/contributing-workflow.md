@@ -133,6 +133,51 @@ The policies above are instructions, not technical enforcement. A maintainer sho
 
 Verify that the ruleset is active. Agent instructions and CI alone cannot protect a branch.
 
+## Static typing baseline
+
+After `uv sync --group dev`, check the existing offline core with:
+
+```sh
+uv run mypy src/diatonic
+uv run ruff check .
+uv run pytest
+```
+
+`[tool.mypy]` in `pyproject.toml` targets Python 3.12 syntax/types and the complete
+`src/diatonic` package (including models, compiler and CLI). It checks bodies of
+untyped functions and warns about unused suppressions and redundant casts. This
+is an incremental baseline, not strict mode or a typing requirement for tests.
+No modules, missing imports or error categories are globally suppressed. PyYAML
+requires the `types-PyYAML` development dependency; mypy does not replace Pydantic's
+runtime validation. No Pydantic mypy plugin is enabled.
+
+The baseline was measured on `ae3e9377c3e8fde5ca8f3d4f37c04a6e35bb9072` with
+Python 3.13.5, mypy 1.20.2 and Typer 0.29.1: **35 errors in 14 files** before fixes,
+including missing YAML stubs. These are measured versions, not a new version-support
+or dependency-locking policy. The type-only Typer imports match that version's
+vendored Click backend; runtime imports retain the external-Click fallback for
+older supported Typer releases. Type-checking with an older Typer backend is not
+claimed by this baseline. CI enforcement remains a separate task/decision.
+
+Eight localized, error-specific suppressions preserve existing runtime contracts:
+
+- `model/{stage,network,hypervisor,image,virtual_machine,provider,provider_binding}.py`:
+  one `assignment` suppression on each concrete `spec` field. Pydantic replaces
+  the envelope's optional JSON mapping with the required typed spec for that kind.
+  Mypy treats this as incompatible mutable attribute inheritance. Broadening the
+  base schema or making these models generic would change an existing public
+  contract; these suppressions retain both schemas unchanged. Consumers must narrow
+  to the concrete resource kind before accessing its kind-specific spec fields.
+- `compiler/loader.py`: one `arg-type` suppression on `Composer.compose_node`.
+  PyYAML actually passes `None`, integer sequence positions and mapping-key Nodes
+  as its index; its stub only allows `int`. The override retains `object` and
+  forwards the value unchanged. Assertions narrow composer results only where
+  composition or `check_data()` already guarantees a Node.
+
+All suppressions have inline explanations; there are no new casts or blanket
+ignores. Keep the checks local to those exact incompatibilities and remove them
+if the underlying typing contracts are corrected, without weakening validation.
+
 ## Deferred automated runner
 
 The [Workflow MVP contract](development/agent-workflow-mvp.md) is
