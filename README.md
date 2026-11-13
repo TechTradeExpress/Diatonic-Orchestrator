@@ -35,15 +35,21 @@ policy. Provider execution, protocols and destructive operations remain outside 
 
 Python 3.12+ and [`uv`](https://docs.astral.sh/uv/) are required.
 
+For development, use the committed lock with **uv 0.13.8** and **CPython 3.12.16**:
+
 ```sh
-uv sync --group dev
-uv run diatonic --help
-uv run diatonic --version
-uv run pytest
-uv run ruff check .
+uv python install 3.12.16
+uv sync --locked --group dev --python 3.12.16
+uv run --locked --python 3.12.16 diatonic --help
+uv run --locked --python 3.12.16 diatonic --version
+uv run --locked --python 3.12.16 pytest
+uv run --locked --python 3.12.16 ruff check .
 ```
 
-`uv sync` creates the local environment and generates `uv.lock` if it is absent.
+Locked sync creates `.venv` and rejects a missing or stale lock. Consumer dependency
+ranges and Python 3.12+ metadata remain unchanged. See the
+[developer baseline](docs/contributing-workflow.md#locked-development-and-ci-baseline)
+for intentional lock updates, validation and reproducibility limits.
 
 ## Validate resource declarations
 

@@ -19,14 +19,37 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
-          enable-cache: true
-      - name: Install Python 3.12
-        run: uv python install 3.12
-      - name: Install dependencies
-        run: uv sync --group dev --python 3.12
+          version: "0.13.8"
+          enable-cache: false
+      - name: Install Python 3.12.16
+        run: uv python install 3.12.16
+      - name: Record baseline and prepare cold cache
+        run: |
+          uv --version
+          uname -srm
+          cat /etc/os-release
+          test ! -d .venv
+          baseline_cache=$(mktemp -d "$RUNNER_TEMP/diatonic-locked-cache.XXXXXX")
+          echo "UV_CACHE_DIR=$baseline_cache" >> "$GITHUB_ENV"
+          sha256sum uv.lock > "$RUNNER_TEMP/diatonic-lock.sha256"
+      - name: Cold locked dependency sync
+        run: |
+          uv sync --locked --group dev --python 3.12.16
+          sha256sum --check "$RUNNER_TEMP/diatonic-lock.sha256"
+      - name: Warm locked sync and lock stability
+        run: |
+          uv sync --locked --group dev --python 3.12.16
+          sha256sum --check "$RUNNER_TEMP/diatonic-lock.sha256"
+          uv run --locked --python 3.12.16 python --version
       - name: Mypy
-        run: uv run --python 3.12 mypy src/diatonic
+        run: uv run --locked --python 3.12.16 mypy src/diatonic
       - name: Ruff
-        run: uv run --python 3.12 ruff check .
+        run: uv run --locked --python 3.12.16 ruff check .
       - name: Pytest
-        run: uv run --python 3.12 pytest -q
+        run: uv run --locked --python 3.12.16 pytest -q
+      - name: Lock rejection and installed distribution checks
+        run: uv run --locked --python 3.12.16 python .github/scripts/verify_locked_baseline.py
+      - name: Verify tracked lock is unchanged
+        run: |
+          sha256sum --check "$RUNNER_TEMP/diatonic-lock.sha256"
+          git diff --exit-code -- uv.lock

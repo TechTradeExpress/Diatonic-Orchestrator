@@ -31,8 +31,8 @@ the normal steps below: a local-only task must not commit, push or create a PR.
 2. Branch from current `main` for the assigned task using a descriptive kebab-case
    name with `feat/`, `fix/`, `test/`, `docs/` or `chore/` prefix.
 3. Implement only the authorized scope, keeping one logical task per PR.
-4. Run appropriate tests and relevant checks, including `uv run ruff check .` and
-   `uv run pytest`. Use `uv sync --group dev` to prepare dependencies if needed.
+4. Run appropriate tests and relevant checks using the
+   [locked baseline commands](#locked-development-and-ci-baseline) below.
    Investigate failures and disclose any checks that could not run.
 5. Commit focused changes with explanatory messages, publish the feature branch
    and open a **Draft PR** targeting `main` as soon as the scope is reviewable.
@@ -134,20 +134,54 @@ The policies above are instructions, not technical enforcement. A maintainer sho
 
 Verify that the ruleset is active. Agent instructions and CI alone cannot protect a branch.
 
-Dependency reproducibility and Python-version coverage are discussed in
-[ADR-0021](decisions/0021-dependency-reproducibility-python-support.md), a
-**Proposed / human approval pending** decision. Current setup and CI commands
-remain unchanged; adoption and implementation require separate authorization.
+## Locked development and CI baseline
+
+[ADR-0021 variant A](decisions/0021-dependency-reproducibility-python-support.md) was
+accepted by maintainer `su-17` on 2026-11-13; [Issue #62](https://github.com/TechTradeExpress/Diatonic-Orchestrator/issues/62)
+authorizes only its first implementation stage. Use **uv 0.13.8** and **CPython
+3.12.16** for the reproducible development/CI baseline:
+
+```sh
+uv python install 3.12.16
+uv sync --locked --group dev --python 3.12.16
+uv run --locked --python 3.12.16 mypy src/diatonic
+uv run --locked --python 3.12.16 ruff check .
+uv run --locked --python 3.12.16 pytest
+```
+
+Commit `uv.lock`; ordinary sync/run must validate it rather than upgrade it.
+After an intentional metadata/dependency change, maintainers generate and review a
+new lock with the pinned uv release and commit it with exact-head check results.
+An intentional `uv lock --upgrade` (or targeted `--upgrade-package`) belongs in a
+separately reviewed update task; it is not part of ordinary CI. The separate
+weekly/manual upgrade lane and additional Python compatibility lanes remain
+unimplemented and require new assignments. Consumer wheel/sdist dependencies
+retain their ranges and `requires-python = ">=3.12"`; consumers need no project lock.
+
+The existing `lint-and-test` job pins these tool/interpreter versions, starts with
+an empty dependency cache and fresh `.venv`, then repeats locked sync using the
+warm cache. It checks unchanged lock hashes, mypy, Ruff and pytest. The CI-only
+[verification helper](../.github/scripts/verify_locked_baseline.py) rejects missing
+and stale locks in disposable copies without rewriting them or executing the
+requested command, checks wheel/sdist consumer metadata and smoke-tests a fresh
+wheel install/import/CLI version/help outside the source checkout. To repeat the
+probes and packaging checks locally with the baseline environment:
+
+```sh
+uv run --locked --python 3.12.16 python .github/scripts/verify_locked_baseline.py
+```
+
+Cross-run cache restoration is disabled; the cold/warm evidence is generated in
+each job. OS/architecture and uv/Python versions are logged. `ubuntu-latest`, the
+runner image/kernel, Actions implementations, build-isolated Hatchling/backend
+resolution, and network/artifact availability remain unfrozen: this is reproducible
+Python dependency selection, not a hermetic build. Lock markers for other Python
+versions/platforms do not establish tested compatibility. Mypy still targets 3.12;
+no later-stage coverage or full audit remediation is claimed.
 
 ## Static typing baseline
 
-After `uv sync --group dev`, check the existing offline core with:
-
-```sh
-uv run mypy src/diatonic
-uv run ruff check .
-uv run pytest
-```
+Use the locked commands above to check the existing offline core.
 
 `[tool.mypy]` in `pyproject.toml` targets Python 3.12 syntax/types and the complete
 `src/diatonic` package (including models, compiler and CLI). It checks bodies of
@@ -164,10 +198,10 @@ or dependency-locking policy. The type-only Typer imports match that version's
 vendored Click backend; runtime imports retain the external-Click fallback for
 older supported Typer releases. Type-checking with an older Typer backend is not
 claimed by this baseline. The existing GitHub Actions `lint-and-test` job installs
-Python 3.12 and the declared dev dependencies with `uv sync --group dev --python 3.12`,
-then runs the named `Mypy` step (`uv run --python 3.12 mypy src/diatonic`) alongside
-Ruff and pytest on pull requests and pushes to `main`. CI uses normal dependency
-resolution without a custom `MYPYPATH` or staged stubs. The job name is unchanged;
+CPython 3.12.16 and the locked dev dependencies with uv 0.13.8,
+then runs the named `Mypy` step with the locked command above, alongside Ruff and
+pytest on pull requests and pushes to `main`. CI installs locked dependencies
+without a custom `MYPYPATH` or staged stubs. The job name is unchanged;
 repository branch-protection settings are managed separately by the maintainer.
 
 Eight localized, error-specific suppressions preserve existing runtime contracts:
