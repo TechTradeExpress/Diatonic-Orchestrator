@@ -134,6 +134,11 @@ The policies above are instructions, not technical enforcement. A maintainer sho
 
 Verify that the ruleset is active. Agent instructions and CI alone cannot protect a branch.
 
+Dependency reproducibility and Python-version coverage are discussed in
+[ADR-0021](decisions/0021-dependency-reproducibility-python-support.md), a
+**Proposed / human approval pending** decision. Current setup and CI commands
+remain unchanged; adoption and implementation require separate authorization.
+
 ## Static typing baseline
 
 After `uv sync --group dev`, check the existing offline core with:
