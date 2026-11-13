@@ -157,7 +157,12 @@ including missing YAML stubs. These are measured versions, not a new version-sup
 or dependency-locking policy. The type-only Typer imports match that version's
 vendored Click backend; runtime imports retain the external-Click fallback for
 older supported Typer releases. Type-checking with an older Typer backend is not
-claimed by this baseline. CI enforcement remains a separate task/decision.
+claimed by this baseline. The existing GitHub Actions `lint-and-test` job installs
+Python 3.12 and the declared dev dependencies with `uv sync --group dev --python 3.12`,
+then runs the named `Mypy` step (`uv run --python 3.12 mypy src/diatonic`) alongside
+Ruff and pytest on pull requests and pushes to `main`. CI uses normal dependency
+resolution without a custom `MYPYPATH` or staged stubs. The job name is unchanged;
+repository branch-protection settings are managed separately by the maintainer.
 
 Eight localized, error-specific suppressions preserve existing runtime contracts:
 
