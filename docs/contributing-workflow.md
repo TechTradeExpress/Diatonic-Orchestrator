@@ -111,9 +111,10 @@ the next implementation again requires explicit human assignment.
 
 ## Architecture and branch protection
 
-M1 compiler behavior remains the baseline. M2 work follows the proposed
-`docs/milestone-2.md` and ADR-0009 in separately requested PR-sized increments,
-after review of the applicable architecture decisions. M2.0 is documentation only.
+M1 compiler behavior remains the baseline. For implemented M2 behavior and its
+original incremental scope and acceptance baseline, see the
+[Milestone 2 roadmap](milestone-2.md). Changes require separately scoped PRs and
+review of applicable architecture decisions. M2.0 remains documentation only.
 M2 analysis must remain offline: no provider/mock execution, provider protocol,
 runtime scheduling, state/journal engine, or plan/apply. Preserve unspecified
 lifecycle ownership and the existing Resource Model/API contracts.
