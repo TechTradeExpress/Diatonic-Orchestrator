@@ -10,7 +10,11 @@ from diatonic.model.lifecycle import StrictModel
 
 
 class NetworkIPv4Spec(StrictModel):
-    """Declared IPv4 subnet and gateway; membership checks are deferred."""
+    """Local syntax validation for the declared IPv4 subnet and gateway.
+
+    The compiler's separate network-scoped IPv4 semantic pass checks membership;
+    this schema does not perform those cross-field or cross-resource checks.
+    """
 
     cidr: IPv4CidrString
     gateway: IPv4AddressString
