@@ -19,14 +19,24 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
+          version: "0.13.8"
           enable-cache: true
-      - name: Install Python 3.12
-        run: uv python install 3.12
+      - name: Install Python 3.12.16
+        run: uv python install 3.12.16
       - name: Install dependencies
-        run: uv sync --group dev --python 3.12
+        run: uv sync --group dev --python 3.12.16
+      - name: Export bootstrap lock evidence (temporary)
+        run: |
+          uv --version
+          uv run --python 3.12.16 python - <<'PYTHON'
+          import base64, hashlib, pathlib, zlib
+          content = pathlib.Path("uv.lock").read_bytes()
+          print("BOOTSTRAP_LOCK_SHA256=" + hashlib.sha256(content).hexdigest())
+          print("BOOTSTRAP_LOCK_ZLIB_BASE64=" + base64.b64encode(zlib.compress(content)).decode())
+          PYTHON
       - name: Mypy
-        run: uv run --python 3.12 mypy src/diatonic
+        run: uv run --python 3.12.16 mypy src/diatonic
       - name: Ruff
-        run: uv run --python 3.12 ruff check .
+        run: uv run --python 3.12.16 ruff check .
       - name: Pytest
-        run: uv run --python 3.12 pytest -q
+        run: uv run --python 3.12.16 pytest -q
